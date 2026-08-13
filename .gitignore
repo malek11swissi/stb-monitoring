@@ -487,6 +487,7 @@ $RECYCLE.BIN/
 .dotnet-cli/
 .npm-cache/
 .nuget/
+.tooling/
 
 # Angular
 node_modules/

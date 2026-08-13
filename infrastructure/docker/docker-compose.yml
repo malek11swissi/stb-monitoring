@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: stb-monitoring-postgres
+    environment:
+      POSTGRES_DB: stb_monitoring
+      POSTGRES_USER: stb_admin
+      POSTGRES_PASSWORD: ChangeMe_Postgres_123!
+    ports:
+      - "55432:5432"
+    volumes:
+      - stb_monitoring_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stb_admin -d stb_monitoring"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  stb_monitoring_postgres_data:
