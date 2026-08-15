@@ -1,5 +1,20 @@
-<header *ngIf="auth.currentUser() as user">
-  <a routerLink="/dashboard" class="brand">STB Monitoring</a>
-  <nav><a routerLink="/dashboard">Tableau de bord</a><a routerLink="/users" *ngIf="user.roles.includes('ADMIN')">Utilisateurs</a><a routerLink="/profile">Profil</a><button (click)="logout()">Déconnexion</button></nav>
-</header>
-<main><router-outlet /></main>
+<div class="app-shell" *ngIf="auth.currentUser() as user; else publicPage">
+  <aside class="sidebar" [class.open]="sidebarOpen">
+    <div class="logo"><span class="logo-mark">S</span><div><strong>STB Sentinel</strong><small>Monitoring Console</small></div><button class="mobile-close" (click)="closeSidebar()">×</button></div>
+    <nav>
+      <span class="nav-label">SUPERVISION</span>
+      <a routerLink="/dashboard" routerLinkActive="active" (click)="closeSidebar()"><span>⌂</span>Vue d’ensemble</a>
+      <a routerLink="/systems" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('systems.read')"><span>◉</span>Systèmes supervisés</a>
+      <span class="nav-label">ADMINISTRATION</span>
+      <a routerLink="/users" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('users.read')"><span>♙</span>Utilisateurs</a>
+      <a routerLink="/roles" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('roles.read')"><span>◇</span>Rôles & permissions</a>
+      <a routerLink="/audit" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('audit.read')"><span>≣</span>Journal d’audit</a>
+      <span class="nav-label">MON COMPTE</span>
+      <a routerLink="/profile" routerLinkActive="active" (click)="closeSidebar()"><span>○</span>Mon profil</a>
+    </nav>
+    <div class="sidebar-user"><div class="avatar">{{user.firstName.charAt(0)}}{{user.lastName.charAt(0)}}</div><div><strong>{{user.firstName}} {{user.lastName}}</strong><small>{{user.roles[0]}}</small></div><button title="Déconnexion" (click)="logout()">↪</button></div>
+  </aside>
+  <div class="mobile-overlay" [class.visible]="sidebarOpen" (click)="closeSidebar()"></div>
+  <main class="workspace"><button class="menu-toggle" (click)="sidebarOpen=true">☰</button><router-outlet /></main>
+</div>
+<ng-template #publicPage><main><router-outlet /></main></ng-template>

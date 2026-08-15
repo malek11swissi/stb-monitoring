@@ -1,0 +1,10 @@
+using StbMonitoring.Domain.Entities;
+namespace StbMonitoring.UnitTests;
+public sealed class SprintTwoTests
+{
+ [Fact] public void New_system_is_enabled_and_unknown(){var system=new MonitoredSystem("core_bank","Core Banking","CBS",SystemEnvironment.Production,SystemCriticality.Critical,"IT");Assert.Equal("CORE_BANK",system.Code);Assert.True(system.MonitoringEnabled);Assert.Equal(MonitoringStatus.Unknown,system.Status);}
+ [Fact] public void System_without_endpoint_remains_unknown(){var system=new MonitoredSystem("test_sys","Test","",SystemEnvironment.Recette,SystemCriticality.Low,null);system.RecalculateStatus();Assert.Equal(MonitoringStatus.Unknown,system.Status);Assert.Null(system.LastCheckedAt);}
+ [Fact] public void Critical_down_endpoint_makes_system_down(){var system=new MonitoredSystem("critical_sys","Critical","",SystemEnvironment.Production,SystemCriticality.Critical,null);var endpoint=new MonitoringEndpoint(system.Id,"Health","https://localhost/health",CheckType.Http,"GET",200,10,60,500,1500,true,null,null);system.Endpoints.Add(endpoint);endpoint.Record(MonitoringStatus.Down,1600,"Timeout");system.RecalculateStatus();Assert.Equal(MonitoringStatus.Down,system.Status);}
+ [Fact] public void Non_critical_down_endpoint_makes_system_degraded(){var system=new MonitoredSystem("secondary_sys","Secondary","",SystemEnvironment.Production,SystemCriticality.Medium,null);var endpoint=new MonitoringEndpoint(system.Id,"Optional","https://localhost/health",CheckType.Http,"GET",200,10,60,500,1500,false,null,null);system.Endpoints.Add(endpoint);endpoint.Record(MonitoringStatus.Down,1600,"Timeout");system.RecalculateStatus();Assert.Equal(MonitoringStatus.Degraded,system.Status);}
+ [Fact] public void Archived_system_stops_monitoring(){var system=new MonitoredSystem("old_sys","Old","",SystemEnvironment.Production,SystemCriticality.Low,null);system.Archive();Assert.True(system.IsArchived);Assert.False(system.MonitoringEnabled);Assert.Equal(MonitoringStatus.Unknown,system.Status);}
+}

@@ -3,6 +3,7 @@ namespace StbMonitoring.Application.Interfaces;
 public interface IAuthService
 {
     Task<LoginResponse?> LoginAsync(LoginRequest request, string? ipAddress, CancellationToken cancellationToken);
+    Task<LoginResponse> RefreshAsync(Guid userId, CancellationToken cancellationToken);
     Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request, string? ipAddress, CancellationToken cancellationToken);
 }
 public interface IUserService

@@ -7,5 +7,5 @@ public sealed class Permission
     public string Name { get; private set; } = string.Empty;
     public string Description { get; private set; } = string.Empty;
     public ICollection<RolePermission> RolePermissions { get; } = new List<RolePermission>();
-    public void Update(string description) => Description = description.Trim();
+    public void Update(string name, string description) { Name = name.Trim().ToLowerInvariant(); Description = description.Trim(); }
 }

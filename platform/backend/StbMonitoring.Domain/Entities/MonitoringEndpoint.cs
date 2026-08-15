@@ -1,0 +1,13 @@
+namespace StbMonitoring.Domain.Entities;
+public sealed class MonitoringEndpoint
+{
+    private MonitoringEndpoint() { }
+    public MonitoringEndpoint(Guid systemId,string name,string url,CheckType checkType,string httpMethod,int expectedStatusCode,int timeoutSeconds,int intervalSeconds,int degradedThresholdMs,int downThresholdMs,bool isCritical,string? expectedJsonProperty,string? expectedJsonValue)
+    {Id=Guid.NewGuid();SystemId=systemId;Update(name,url,checkType,httpMethod,expectedStatusCode,timeoutSeconds,intervalSeconds,degradedThresholdMs,downThresholdMs,isCritical,expectedJsonProperty,expectedJsonValue);NextCheckAt=DateTime.UtcNow;}
+    public Guid Id{get;private set;} public Guid SystemId{get;private set;} public MonitoredSystem System{get;private set;}=null!; public string Name{get;private set;}=string.Empty; public string Url{get;private set;}=string.Empty; public CheckType CheckType{get;private set;} public string HttpMethod{get;private set;}="GET";
+    public int ExpectedStatusCode{get;private set;}=200; public int TimeoutSeconds{get;private set;}=10; public int IntervalSeconds{get;private set;}=60; public int DegradedThresholdMs{get;private set;}=1500; public int DownThresholdMs{get;private set;}=3000; public bool IsCritical{get;private set;}=true; public bool IsActive{get;private set;}=true;
+    public string? ExpectedJsonProperty{get;private set;} public string? ExpectedJsonValue{get;private set;} public MonitoringStatus Status{get;private set;}=MonitoringStatus.Unknown; public DateTime? LastCheckedAt{get;private set;} public DateTime NextCheckAt{get;private set;} public long? LastDurationMs{get;private set;} public string? LastError{get;private set;} public ICollection<CheckResult> Results{get;}=new List<CheckResult>();
+    public void Update(string name,string url,CheckType checkType,string httpMethod,int expectedStatusCode,int timeoutSeconds,int intervalSeconds,int degradedThresholdMs,int downThresholdMs,bool isCritical,string? expectedJsonProperty,string? expectedJsonValue){Name=name.Trim();Url=url.Trim();CheckType=checkType;HttpMethod=httpMethod.Trim().ToUpperInvariant();ExpectedStatusCode=expectedStatusCode;TimeoutSeconds=timeoutSeconds;IntervalSeconds=intervalSeconds;DegradedThresholdMs=degradedThresholdMs;DownThresholdMs=downThresholdMs;IsCritical=isCritical;ExpectedJsonProperty=expectedJsonProperty?.Trim();ExpectedJsonValue=expectedJsonValue?.Trim();}
+    public void SetActive(bool active){IsActive=active;if(!active)Status=MonitoringStatus.Unknown;NextCheckAt=DateTime.UtcNow;}
+    public void Record(MonitoringStatus status,long durationMs,string? error){Status=status;LastDurationMs=durationMs;LastError=error;LastCheckedAt=DateTime.UtcNow;NextCheckAt=DateTime.UtcNow.AddSeconds(IntervalSeconds);}
+}
