@@ -21,13 +21,13 @@ builder.Services.AddSwaggerGen(o=>{o.SwaggerDoc("v1",new(){Title="STB Monitoring
 builder.Services.AddDbContext<MonitoringDbContext>(o=>o.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSql")));
 builder.Services.AddScoped<IIdentityStore,IdentityStore>(); builder.Services.AddScoped<IPasswordService,PasswordService>(); builder.Services.AddScoped<ITokenService,JwtTokenService>();
 builder.Services.AddScoped<IAuthService,AuthService>(); builder.Services.AddScoped<IUserService,UserService>(); builder.Services.AddScoped<DatabaseSeeder>();
-builder.Services.AddScoped<IMonitoringStore,MonitoringStore>();builder.Services.AddScoped<IMonitoringService,MonitoringService>();builder.Services.AddScoped<ICheckExecutor,HttpCheckExecutor>();builder.Services.AddScoped<ICheckExecutor,ApiJsonCheckExecutor>();builder.Services.AddScoped<ICheckExecutor,TlsCheckExecutor>();builder.Services.AddHostedService<MonitoringWorker>();
+builder.Services.AddScoped<IMonitoringStore,MonitoringStore>();builder.Services.AddScoped<IMonitoringService,MonitoringService>();builder.Services.AddScoped<IOperationsStore,OperationsStore>();builder.Services.AddScoped<IOperationsService,OperationsService>();builder.Services.AddScoped<ICheckExecutor,HttpCheckExecutor>();builder.Services.AddScoped<ICheckExecutor,ApiJsonCheckExecutor>();builder.Services.AddScoped<ICheckExecutor,TlsCheckExecutor>();builder.Services.AddHostedService<MonitoringWorker>();builder.Services.AddHostedService<SlaWorker>();
 var jwt=builder.Configuration.GetSection("Jwt");var key=jwt["Key"]??throw new InvalidOperationException("Jwt:Key absent.");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o=>o.TokenValidationParameters=new(){ValidateIssuer=true,ValidateAudience=true,ValidateLifetime=true,ValidateIssuerSigningKey=true,ValidIssuer=jwt["Issuer"],ValidAudience=jwt["Audience"],IssuerSigningKey=new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),ClockSkew=TimeSpan.FromMinutes(1)});
 builder.Services.AddAuthorization(options =>
 {
     foreach (var permission in StbMonitoring.Domain.Constants.PermissionNames.All)
-        options.AddPolicy(permission, policy => policy.RequireClaim("permission", permission));
+        options.AddPolicy(permission, policy => policy.RequireRole(StbMonitoring.Domain.Constants.PermissionNames.RolesFor(permission)));
 });
 builder.Services.AddCors(options => options.AddPolicy("Frontend", policy =>
 {

@@ -13,7 +13,5 @@ public sealed class UsersController(IUserService users):ControllerBase
     [HttpPost,Authorize(Policy=PermissionNames.UsersManage)] public async Task<IActionResult> Create(CreateUserRequest r,CancellationToken ct){var x=await users.CreateAsync(r,Actor(),Ip(),ct);return CreatedAtAction(nameof(One),new{id=x.Id},x);}
     [HttpPut("{id:guid}"),Authorize(Policy=PermissionNames.UsersManage)] public async Task<IActionResult> Update(Guid id,UpdateUserRequest r,CancellationToken ct)=>Ok(await users.UpdateAsync(id,r,Actor(),Ip(),ct));
     [HttpPatch("{id:guid}/active"),Authorize(Policy=PermissionNames.UsersManage)] public async Task<IActionResult> Active(Guid id,[FromQuery]bool value,CancellationToken ct){await users.SetActiveAsync(id,value,Actor(),Ip(),ct);return NoContent();}
-    [HttpPost("{id:guid}/roles"),Authorize(Policy=PermissionNames.UsersManage)] public async Task<IActionResult> Assign(Guid id,AssignRoleRequest r,CancellationToken ct){await users.AssignRoleAsync(id,r,Actor(),Ip(),ct);return NoContent();}
-    [HttpDelete("{id:guid}/roles/{roleName}"),Authorize(Policy=PermissionNames.UsersManage)] public async Task<IActionResult> Remove(Guid id,string roleName,CancellationToken ct){await users.RemoveRoleAsync(id,roleName,Actor(),Ip(),ct);return NoContent();}
     private Guid Actor()=>Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);private string? Ip()=>HttpContext.Connection.RemoteIpAddress?.ToString();
 }

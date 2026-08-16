@@ -24,4 +24,5 @@ export interface EndpointDraft { name:string;url:string;checkType:string;httpMet
   endpointActive(id:string,value:boolean){return this.http.patch<void>(`${this.api}/endpoints/${id}/active?value=${value}`,{})}
   deleteEndpoint(id:string){return this.http.delete<void>(`${this.api}/endpoints/${id}`)}
   execute(id:string){return this.http.post<CheckResult>(`${this.api}/endpoints/${id}/execute`,{})}
+  checks(filters:{systemId?:string;endpointId?:string;status?:string;from?:string;to?:string;take?:number}){const q=new URLSearchParams();Object.entries(filters).forEach(([k,v])=>{if(v!==undefined&&v!=='')q.set(k,String(v))});return this.http.get<CheckResult[]>(`${this.api}/checks?${q}`)}
 }

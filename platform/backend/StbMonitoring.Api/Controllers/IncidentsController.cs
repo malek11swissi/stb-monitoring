@@ -1,0 +1,75 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using StbMonitoring.Application.Contracts;
+using StbMonitoring.Application.Interfaces;
+using StbMonitoring.Domain.Constants;
+
+namespace StbMonitoring.Api.Controllers;
+
+[ApiController, Route("api/incidents"), Authorize]
+public sealed class IncidentsController(IOperationsService service) : ControllerBase
+{
+    [HttpGet, Authorize(Policy = PermissionNames.IncidentsRead)]
+    public async Task<IActionResult> All(CancellationToken ct)
+    {
+        var incidents = await service.IncidentsAsync(ct);
+        return Ok(User.IsInRole(RoleNames.Technician)
+            ? incidents.Where(x => x.AssignedToUserId == Actor())
+            : incidents);
+    }
+
+    [HttpGet("{id:guid}"), Authorize(Policy = PermissionNames.IncidentsRead)]
+    public async Task<IActionResult> One(Guid id, CancellationToken ct)
+    {
+        var incident = await service.IncidentAsync(id, ct);
+        if (incident is null) return NotFound();
+        if (User.IsInRole(RoleNames.Technician) && incident.Incident.AssignedToUserId != Actor()) return Forbid();
+        return Ok(incident);
+    }
+
+    [HttpPost, Authorize(Policy = PermissionNames.IncidentsManage)]
+    public async Task<IActionResult> Create(CreateIncidentRequest request, CancellationToken ct) =>
+        Ok(await service.CreateIncidentAsync(request, Actor(), ct));
+
+    [HttpPut("{id:guid}"), Authorize(Policy = PermissionNames.IncidentsManage)]
+    public async Task<IActionResult> Update(Guid id, UpdateIncidentRequest request, CancellationToken ct) =>
+        Ok(await service.UpdateIncidentAsync(id, request, Actor(), ct));
+
+    [HttpPost("{id:guid}/assign"), Authorize(Policy = PermissionNames.IncidentsAssign)]
+    public async Task<IActionResult> Assign(Guid id, AssignIncidentRequest request, CancellationToken ct)
+    { await service.AssignAsync(id, request.UserId, Actor(), ct); return NoContent(); }
+
+    [HttpPost("{id:guid}/start"), Authorize(Policy = PermissionNames.IncidentsWork)]
+    public async Task<IActionResult> Start(Guid id, CancellationToken ct)
+    { if (await TechnicianAccess(id, ct) is { } denied) return denied; await service.StartAsync(id, Actor(), ct); return NoContent(); }
+
+    [HttpPost("{id:guid}/pending"), Authorize(Policy = PermissionNames.IncidentsWork)]
+    public async Task<IActionResult> Pending(Guid id, CancellationToken ct)
+    { if (await TechnicianAccess(id, ct) is { } denied) return denied; await service.PendingAsync(id, Actor(), ct); return NoContent(); }
+
+    [HttpPost("{id:guid}/resolve"), Authorize(Policy = PermissionNames.IncidentsResolve)]
+    public async Task<IActionResult> Resolve(Guid id, ResolveIncidentRequest request, CancellationToken ct)
+    { if (await TechnicianAccess(id, ct) is { } denied) return denied; await service.ResolveIncidentAsync(id, request, Actor(), ct); return NoContent(); }
+
+    [HttpPost("{id:guid}/close"), Authorize(Policy = PermissionNames.IncidentsClose)]
+    public async Task<IActionResult> Close(Guid id, CancellationToken ct)
+    { await service.CloseIncidentAsync(id, Actor(), ct); return NoContent(); }
+
+    [HttpPost("{id:guid}/reopen"), Authorize(Policy = PermissionNames.IncidentsClose)]
+    public async Task<IActionResult> Reopen(Guid id, CancellationToken ct)
+    { await service.ReopenAsync(id, Actor(), ct); return NoContent(); }
+
+    [HttpPost("{id:guid}/comments"), Authorize(Policy = PermissionNames.IncidentsWork)]
+    public async Task<IActionResult> Comment(Guid id, AddCommentRequest request, CancellationToken ct)
+    { if (await TechnicianAccess(id, ct) is { } denied) return denied; await service.CommentAsync(id, request, Actor(), ct); return NoContent(); }
+
+    private Guid Actor() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    private async Task<IActionResult?> TechnicianAccess(Guid id, CancellationToken ct)
+    {
+        if (!User.IsInRole(RoleNames.Technician)) return null;
+        var detail = await service.IncidentAsync(id, ct);
+        if (detail is null) return NotFound();
+        return detail.Incident.AssignedToUserId == Actor() ? null : Forbid();
+    }
+}

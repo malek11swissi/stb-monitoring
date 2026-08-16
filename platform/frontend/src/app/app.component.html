@@ -5,14 +5,17 @@
       <span class="nav-label">SUPERVISION</span>
       <a routerLink="/dashboard" routerLinkActive="active" (click)="closeSidebar()"><span>⌂</span>Vue d’ensemble</a>
       <a routerLink="/systems" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('systems.read')"><span>◉</span>Systèmes supervisés</a>
+      <a routerLink="/alerts" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('alerts.read')"><span>⚠</span>Alertes</a>
+      <a routerLink="/incidents" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('incidents.read')"><span>◆</span>Incidents</a>
       <span class="nav-label">ADMINISTRATION</span>
       <a routerLink="/users" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('users.read')"><span>♙</span>Utilisateurs</a>
-      <a routerLink="/roles" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('roles.read')"><span>◇</span>Rôles & permissions</a>
       <a routerLink="/audit" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('audit.read')"><span>≣</span>Journal d’audit</a>
+      <a routerLink="/sla" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('sla.manage')"><span>◷</span>Politiques SLA</a>
       <span class="nav-label">MON COMPTE</span>
       <a routerLink="/profile" routerLinkActive="active" (click)="closeSidebar()"><span>○</span>Mon profil</a>
+      <a routerLink="/notifications" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('notifications.read')"><span>●</span>Notifications</a>
     </nav>
-    <div class="sidebar-user"><div class="avatar">{{user.firstName.charAt(0)}}{{user.lastName.charAt(0)}}</div><div><strong>{{user.firstName}} {{user.lastName}}</strong><small>{{user.roles[0]}}</small></div><button title="Déconnexion" (click)="logout()">↪</button></div>
+    <div class="sidebar-user"><div class="avatar">{{user.firstName.charAt(0)}}{{user.lastName.charAt(0)}}</div><div><strong>{{user.firstName}} {{user.lastName}}</strong><small>{{user.role}}</small></div><button title="Déconnexion" (click)="logout()">↪</button></div>
   </aside>
   <div class="mobile-overlay" [class.visible]="sidebarOpen" (click)="closeSidebar()"></div>
   <main class="workspace"><button class="menu-toggle" (click)="sidebarOpen=true">☰</button><router-outlet /></main>

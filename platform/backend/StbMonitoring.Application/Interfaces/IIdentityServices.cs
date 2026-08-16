@@ -13,6 +13,4 @@ public interface IUserService
     Task<UserResponse> CreateAsync(CreateUserRequest request, Guid actorId, string? ipAddress, CancellationToken cancellationToken);
     Task<UserResponse> UpdateAsync(Guid id, UpdateUserRequest request, Guid actorId, string? ipAddress, CancellationToken cancellationToken);
     Task SetActiveAsync(Guid id, bool active, Guid actorId, string? ipAddress, CancellationToken cancellationToken);
-    Task AssignRoleAsync(Guid id, AssignRoleRequest request, Guid actorId, string? ipAddress, CancellationToken cancellationToken);
-    Task RemoveRoleAsync(Guid id, string roleName, Guid actorId, string? ipAddress, CancellationToken cancellationToken);
 }

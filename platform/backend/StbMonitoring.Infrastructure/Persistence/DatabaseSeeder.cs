@@ -11,27 +11,25 @@ public sealed class DatabaseSeeder(MonitoringDbContext db, IPasswordService pass
     {
         await db.Database.EnsureCreatedAsync(ct);
 
-        var existingRoles = await db.Roles.Select(x => x.Name).ToArrayAsync(ct);
-        foreach (var name in RoleNames.All.Except(existingRoles, StringComparer.OrdinalIgnoreCase))
-            db.Roles.Add(new Role(name, $"Rôle {name}"));
-
-        var existingPermissions = await db.Permissions.Select(x => x.Name).ToArrayAsync(ct);
-        foreach (var name in PermissionNames.All.Except(existingPermissions, StringComparer.OrdinalIgnoreCase))
-            db.Permissions.Add(new Permission(name, $"Permission {name}"));
-
-        await db.SaveChangesAsync(ct);
-
-        var admin = await db.Roles.SingleAsync(x => x.Name == RoleNames.Admin, ct);
-        var permissions = await db.Permissions.ToArrayAsync(ct);
-        var assignedIds = await db.RolePermissions.Where(x => x.RoleId == admin.Id).Select(x => x.PermissionId).ToArrayAsync(ct);
-        foreach (var permission in permissions.Where(x => !assignedIds.Contains(x.Id)))
-            db.RolePermissions.Add(new RolePermission(admin.Id, permission.Id));
-
         if (!await db.Users.AnyAsync(ct))
         {
-            var user = new User("admin", "admin@stb.local", passwords.Hash("ChangeMe123!"), "Admin", "STB");
+            var user = new User("admin", "admin@stb.local", passwords.Hash("ChangeMe123!"), "Admin", "STB", RoleNames.Admin);
             db.Users.Add(user);
-            db.UserRoles.Add(new UserRole(user.Id, admin.Id));
+        }
+
+        if (!await db.AlertRules.AnyAsync(ct))
+        {
+            db.AlertRules.Add(new AlertRule("Endpoint indisponible", "Déclenche une alerte après un contrôle DOWN.", AlertEventType.EndpointDown, AlertSeverity.Major, 1, 30, true, true));
+            db.AlertRules.Add(new AlertRule("Performance dégradée", "Déclenche une alerte après deux contrôles dégradés.", AlertEventType.EndpointDegraded, AlertSeverity.Warning, 2, 30, true, true));
+            db.AlertRules.Add(new AlertRule("Timeout réseau", "Déclenche une alerte sur expiration du délai.", AlertEventType.Timeout, AlertSeverity.Major, 1, 30, true, true));
+            db.AlertRules.Add(new AlertRule("Certificat TLS invalide", "Déclenche une alerte TLS.", AlertEventType.TlsInvalid, AlertSeverity.Critical, 1, 1440, true, true));
+        }
+        if (!await db.SlaPolicies.AnyAsync(ct))
+        {
+            db.SlaPolicies.Add(new SlaPolicy("P1 Critique", "Prise en charge immédiate", IncidentPriority.P1Critical, 15, 60, 25));
+            db.SlaPolicies.Add(new SlaPolicy("P2 Haute", "Incident majeur", IncidentPriority.P2High, 30, 240, 25));
+            db.SlaPolicies.Add(new SlaPolicy("P3 Moyenne", "Incident standard", IncidentPriority.P3Medium, 120, 480, 25));
+            db.SlaPolicies.Add(new SlaPolicy("P4 Faible", "Incident mineur", IncidentPriority.P4Low, 480, 1440, 25));
         }
 
         await db.SaveChangesAsync(ct);

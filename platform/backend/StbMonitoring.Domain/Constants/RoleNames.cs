@@ -5,6 +5,11 @@ public static class RoleNames
     public const string ManagerIt = "MANAGER_IT";
     public const string Supervisor = "SUPERVISOR";
     public const string Technician = "TECHNICIAN";
-    public const string User = "USER";
-    public static readonly string[] All = [Admin, ManagerIt, Supervisor, Technician, User];
+    public static readonly string[] All = [Admin, ManagerIt, Supervisor, Technician];
+
+    public static string Normalize(string role)
+    {
+        var normalized = role.Trim().ToUpperInvariant();
+        return All.Contains(normalized) ? normalized : throw new ArgumentException($"Rôle invalide : {role}.");
+    }
 }
