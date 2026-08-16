@@ -1,0 +1,32 @@
+name: stb-sms
+
+services:
+  sms-mysql:
+    image: mysql:8.4
+    container_name: stb-sms-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: sms_simulator
+      MYSQL_USER: sms_user
+      MYSQL_PASSWORD: sms_password
+    ports: ["3306:3306"]
+    volumes: ["sms_mysql_data:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -proot_password --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  sms-simulator:
+    build: { context: ./SmsSimulator }
+    container_name: stb-sms-simulator
+    restart: unless-stopped
+    depends_on:
+      sms-mysql: { condition: service_healthy }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__MySql: "Server=sms-mysql;Port=3306;Database=sms_simulator;User ID=sms_user;Password=sms_password;Connection Timeout=3"
+      Lab__AdminKey: change-this-lab-key
+    ports: ["5103:8080"]
+volumes:
+  sms_mysql_data:

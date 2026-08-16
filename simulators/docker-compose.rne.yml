@@ -1,0 +1,37 @@
+name: stb-rne
+
+services:
+  rne-mongodb:
+    image: mongo:8.0
+    container_name: stb-rne-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: rne_user
+      MONGO_INITDB_ROOT_PASSWORD: rne_password
+    ports:
+      - "27017:27017"
+    volumes:
+      - rne_mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--username", "rne_user", "--password", "rne_password", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rne-simulator:
+    build:
+      context: ./RneSimulator
+    container_name: stb-rne-simulator
+    restart: unless-stopped
+    depends_on:
+      rne-mongodb:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      MongoDb__ConnectionString: mongodb://rne_user:rne_password@rne-mongodb:27017/?authSource=admin
+      Lab__AdminKey: change-this-lab-key
+    ports:
+      - "5102:8080"
+
+volumes:
+  rne_mongodb_data:

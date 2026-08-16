@@ -1,0 +1,30 @@
+name: stb-rh
+
+services:
+  hr-sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: stb-hr-sqlserver
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ChangeMe_SQL_123!
+    ports: ["1433:1433"]
+    volumes: ["hr_sqlserver_data:/var/opt/mssql"]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'ChangeMe_SQL_123!' -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  hr-simulator:
+    build: { context: ./HrSimulator }
+    container_name: stb-hr-simulator
+    restart: unless-stopped
+    depends_on:
+      hr-sqlserver: { condition: service_healthy }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__SqlServer: "Server=hr-sqlserver,1433;Database=hr_simulator;User Id=sa;Password=ChangeMe_SQL_123!;TrustServerCertificate=True;Connect Timeout=3"
+      Lab__AdminKey: change-this-lab-key
+    ports: ["5104:8080"]
+volumes:
+  hr_sqlserver_data:

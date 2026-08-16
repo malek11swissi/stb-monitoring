@@ -1,0 +1,34 @@
+name: stb-core-banking
+
+services:
+  core-oracle:
+    image: gvenzl/oracle-free:23-slim-faststart
+    container_name: stb-core-oracle
+    restart: unless-stopped
+    environment:
+      ORACLE_PASSWORD: oracle_admin_password
+      APP_USER: core_user
+      APP_USER_PASSWORD: core_password
+    # Le port Oracle standard 1521 est souvent déjà occupé sur Windows.
+    # Le microservice utilise toujours 1521 dans le réseau Docker ; 1522 sert
+    # uniquement aux connexions lancées directement depuis la machine hôte.
+    ports: ["1522:1521"]
+    volumes: ["core_oracle_data:/opt/oracle/oradata"]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+  core-banking-simulator:
+    build: { context: ./CoreBankingSimulator }
+    container_name: stb-core-banking-simulator
+    restart: unless-stopped
+    depends_on:
+      core-oracle: { condition: service_healthy }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Oracle: "User Id=core_user;Password=core_password;Data Source=core-oracle:1521/FREEPDB1;Connection Timeout=3"
+      Lab__AdminKey: change-this-lab-key
+    ports: ["5101:8080"]
+volumes:
+  core_oracle_data:
