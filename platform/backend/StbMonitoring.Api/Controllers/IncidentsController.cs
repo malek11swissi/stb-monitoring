@@ -1,6 +1,8 @@
+// API du cycle complet d'incident, affectation, commentaires et preuves.
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using StbMonitoring.Application.Contracts;
 using StbMonitoring.Application.Interfaces;
 using StbMonitoring.Domain.Constants;
@@ -8,7 +10,7 @@ using StbMonitoring.Domain.Constants;
 namespace StbMonitoring.Api.Controllers;
 
 [ApiController, Route("api/incidents"), Authorize]
-public sealed class IncidentsController(IOperationsService service) : ControllerBase
+public sealed class IncidentsController(IOperationsService service,StbMonitoring.Infrastructure.Persistence.MonitoringDbContext db) : ControllerBase
 {
     [HttpGet, Authorize(Policy = PermissionNames.IncidentsRead)]
     public async Task<IActionResult> All(CancellationToken ct)
@@ -63,6 +65,15 @@ public sealed class IncidentsController(IOperationsService service) : Controller
     [HttpPost("{id:guid}/comments"), Authorize(Policy = PermissionNames.IncidentsWork)]
     public async Task<IActionResult> Comment(Guid id, AddCommentRequest request, CancellationToken ct)
     { if (await TechnicianAccess(id, ct) is { } denied) return denied; await service.CommentAsync(id, request, Actor(), ct); return NoContent(); }
+
+    [HttpGet("{id:guid}/attachments"), Authorize(Policy = PermissionNames.IncidentsRead)]
+    public async Task<IActionResult> Attachments(Guid id,CancellationToken ct){if(await TechnicianAccess(id,ct)is{}denied)return denied;return Ok(await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToArrayAsync(db.IncidentAttachments.AsNoTracking().Where(x=>x.IncidentId==id).OrderByDescending(x=>x.CreatedAt).Select(x=>new{x.Id,x.FileName,x.ContentType,size=x.Content.LongLength,x.IsResolutionProof,x.CreatedAt}),ct));}
+    [HttpPost("{id:guid}/attachments"),Authorize(Policy=PermissionNames.IncidentsWork),RequestSizeLimit(10_485_760)]
+    public async Task<IActionResult> Upload(Guid id,IFormFile file,[FromForm]bool isResolutionProof,CancellationToken ct){if(await TechnicianAccess(id,ct)is{}denied)return denied;if(file.Length is 0 or >10_485_760)return BadRequest(new{message="Fichier vide ou supérieur à 10 Mo."});await using var ms=new MemoryStream();await file.CopyToAsync(ms,ct);var x=new StbMonitoring.Domain.Entities.IncidentAttachment(id,Actor(),file.FileName,file.ContentType,ms.ToArray(),isResolutionProof);db.Add(x);await db.SaveChangesAsync(ct);return Ok(new{x.Id,x.FileName,x.ContentType,size=x.Content.LongLength,x.IsResolutionProof,x.CreatedAt});}
+    [HttpGet("attachments/{attachmentId:guid}/download"),Authorize(Policy=PermissionNames.IncidentsRead)]
+    public async Task<IActionResult> Download(Guid attachmentId,CancellationToken ct){var x=await db.IncidentAttachments.AsNoTracking().SingleOrDefaultAsync(x=>x.Id==attachmentId,ct);if(x is null)return NotFound();if(await TechnicianAccess(x.IncidentId,ct)is{}denied)return denied;return File(x.Content,x.ContentType,x.FileName);}
+    [HttpDelete("attachments/{attachmentId:guid}"),Authorize(Policy=PermissionNames.IncidentsManage)]
+    public async Task<IActionResult> DeleteAttachment(Guid attachmentId,CancellationToken ct){var x=await db.IncidentAttachments.FindAsync([attachmentId],ct);if(x is null)return NotFound();db.Remove(x);await db.SaveChangesAsync(ct);return NoContent();}
 
     private Guid Actor() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private async Task<IActionResult?> TechnicianAccess(Guid id, CancellationToken ct)

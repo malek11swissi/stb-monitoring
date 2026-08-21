@@ -1,4 +1,5 @@
 namespace StbMonitoring.Domain.Entities;
+/// <summary>Condition configurable transformant des échecs confirmés en alerte.</summary>
 
 public sealed class AlertRule
 {

@@ -1,3 +1,4 @@
+/** Page publique de connexion et retour vers la page initialement demandée. */
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';

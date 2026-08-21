@@ -1,4 +1,5 @@
 namespace StbMonitoring.Domain.Entities;
+/// <summary>Délais contractuels de réponse et résolution pour une priorité.</summary>
 public sealed class SlaPolicy
 {
     private SlaPolicy() { }

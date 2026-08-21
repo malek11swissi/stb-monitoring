@@ -2,14 +2,26 @@ using StbMonitoring.Application.Contracts;
 using StbMonitoring.Application.Interfaces;
 using StbMonitoring.Domain.Entities;
 namespace StbMonitoring.Application.Services;
-public sealed partial class OperationsService(IOperationsStore store) : IOperationsService
+/// <summary>
+/// Moteur opérationnel de la plateforme. Il transforme les résultats techniques
+/// en alertes dédupliquées, puis permet leur qualification en incidents suivis
+/// par SLA, historique, notifications et escalade.
+/// </summary>
+public sealed partial class OperationsService(IOperationsStore store,IIncidentNotificationDispatcher incidentNotifications) : IOperationsService
 {
+    /// <summary>
+    /// Applique les règles d'alerte à un résultat de contrôle. Une maintenance
+    /// peut supprimer l'alerte sans arrêter le contrôle ni son historisation.
+    /// </summary>
     public async Task EvaluateAsync(CheckResult result, CancellationToken ct)
     {
         var endpoint = await store.GetEndpointForAlertAsync(result.EndpointId, ct);
         if (endpoint is null) return;
+        if (result.Status != MonitoringStatus.Up && await store.IsAlertSuppressedAsync(result.SystemId, result.EndpointId, result.CompletedAt, ct)) return;
         if (result.Status == MonitoringStatus.Up)
         {
+            // Le retour à UP résout seulement les alertes dont la règle autorise
+            // la résolution automatique. La clôture reste une action humaine.
             var rulesById = (await store.GetRulesAsync(ct)).ToDictionary(x => x.Id);
             foreach (var alert in await store.GetActiveAlertsForEndpointAsync(result.EndpointId, ct))
                 if (alert.RuleId.HasValue && rulesById.TryGetValue(alert.RuleId.Value, out var rule) && rule.AutoResolve)
@@ -21,8 +33,12 @@ public sealed partial class OperationsService(IOperationsStore store) : IOperati
         var rules = (await store.GetRulesAsync(ct)).Where(x => x.IsActive && x.EventType == type && (!x.SystemId.HasValue || x.SystemId == result.SystemId) && (!x.EndpointId.HasValue || x.EndpointId == result.EndpointId)).ToArray();
         foreach (var rule in rules)
         {
+            // On attend N échecs consécutifs afin d'éviter une alerte pour une
+            // indisponibilité très brève ou un incident réseau isolé.
             if (await store.ConsecutiveFailuresAsync(result.EndpointId, rule.ConsecutiveFailures, ct) < rule.ConsecutiveFailures) continue;
             var key = $"{result.SystemId}:{result.EndpointId}:{type}:{rule.Id}";
+            // La clé et la fenêtre temporelle réutilisent une alerte existante
+            // au lieu de créer une tempête d'alertes identiques.
             var alert = await store.GetDeduplicatedAlertAsync(key, DateTime.UtcNow.AddMinutes(-rule.DeduplicationMinutes), ct);
             if (alert is null)
             {
@@ -33,11 +49,13 @@ public sealed partial class OperationsService(IOperationsStore store) : IOperati
                 if (rule.NotifyInApp) await NotifyAdmins("ALERT_CREATED", alert.Title, alert.Description, alert.Severity, "Alert", alert.Id, $"/alerts/{alert.Id}", ct);
             }
             else alert.Occur(result.Id, result.ErrorMessage);
+            // L'occurrence conserve le lien exact vers chaque contrôle ayant
+            // contribué à l'alerte et sert de preuve dans sa chronologie.
             store.AddOccurrence(new AlertOccurrence(alert.Id, result.Id, result.Status, result.ErrorType, result.ErrorMessage));
             await store.SaveChangesAsync(ct);
         }
     }
-    private static AlertEventType Event(CheckResult r) => r.ErrorType switch { "TIMEOUT" => AlertEventType.Timeout, "TLS_EXPIRY" => AlertEventType.TlsExpiring, "TLS" => AlertEventType.TlsInvalid, "VALIDATION" => AlertEventType.ValidationFailed, _ => r.Status == MonitoringStatus.Degraded ? AlertEventType.EndpointDegraded : AlertEventType.EndpointDown }; private static AlertSeverity Severity(AlertRule r, SystemCriticality c, MonitoringStatus s) => s == MonitoringStatus.Down && c == SystemCriticality.Critical ? AlertSeverity.Critical : s == MonitoringStatus.Down && c >= SystemCriticality.High ? AlertSeverity.Major : r.Severity;
+    private static AlertEventType Event(CheckResult r) => r.ErrorType switch { "TIMEOUT" => AlertEventType.Timeout, "TLS_EXPIRING" => AlertEventType.TlsExpiring, "TLS_EXPIRED" => AlertEventType.TlsExpired, "TLS_NAME_MISMATCH" or "TLS_UNTRUSTED" or "TLS_NOT_YET_VALID" or "TLS_HANDSHAKE" or "TLS_CONNECTION" => AlertEventType.TlsInvalid, "VALIDATION" => AlertEventType.ValidationFailed, _ => r.Status == MonitoringStatus.Degraded ? AlertEventType.EndpointDegraded : AlertEventType.EndpointDown }; private static AlertSeverity Severity(AlertRule r, SystemCriticality c, MonitoringStatus s) => s == MonitoringStatus.Down && c == SystemCriticality.Critical ? AlertSeverity.Critical : s == MonitoringStatus.Down && c >= SystemCriticality.High ? AlertSeverity.Major : r.Severity;
     public Task<IReadOnlyCollection<AlertResponse>> AlertsAsync(CancellationToken ct) => store.GetAlertsAsync(ct); public async Task<AlertDetailResponse?> AlertAsync(Guid id, CancellationToken ct) { var a = (await store.GetAlertsAsync(ct)).SingleOrDefault(x => x.Id == id); return a is null ? null : new(a, await store.GetOccurrencesAsync(id, ct)); }
     public async Task AcknowledgeAsync(Guid id, Guid userId, CancellationToken ct) { (await AlertRequired(id, ct)).Acknowledge(userId); await store.SaveChangesAsync(ct); }
     public async Task ResolveAlertAsync(Guid id, CancellationToken ct) { (await AlertRequired(id, ct)).Resolve(); await store.SaveChangesAsync(ct); }
@@ -46,13 +64,22 @@ public sealed partial class OperationsService(IOperationsStore store) : IOperati
     public async Task<AlertRuleResponse> UpdateRuleAsync(Guid id, AlertRuleRequest r, CancellationToken ct) { var x = await RuleRequired(id, ct); x.Update(r.Name, r.Description, r.EventType, r.Severity, r.ConsecutiveFailures, r.DeduplicationMinutes, r.AutoResolve, r.NotifyInApp, r.SystemId, r.EndpointId); await store.SaveChangesAsync(ct); return Map(x); }
     public async Task SetRuleActiveAsync(Guid id, bool value, CancellationToken ct) { (await RuleRequired(id, ct)).SetActive(value); await store.SaveChangesAsync(ct); }
     public async Task DeleteRuleAsync(Guid id, CancellationToken ct) { var x = await RuleRequired(id, ct); store.RemoveRule(x); await store.SaveChangesAsync(ct); }
-    public Task<IReadOnlyCollection<IncidentResponse>> IncidentsAsync(CancellationToken ct) => store.GetIncidentsAsync(ct); public Task<IncidentDetailResponse?> IncidentAsync(Guid id, CancellationToken ct) => store.GetIncidentDetailAsync(id, ct); public async Task<IncidentResponse> CreateIncidentAsync(CreateIncidentRequest r, Guid actor, CancellationToken ct) { Alert? alert = null; if (r.AlertId.HasValue) { alert = await AlertRequired(r.AlertId.Value, ct); if (alert.IncidentId.HasValue) throw new InvalidOperationException("Cette alerte possède déjà un incident."); } var priority = r.Priority; var sla = await store.GetSlaForAsync(priority, ct); var x = new Incident($"INC-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}", r.AlertId, r.SystemId ?? alert?.SystemId, r.EndpointId ?? alert?.EndpointId, r.Title, r.Description, r.Category, priority, actor, sla?.Id, sla?.ResponseTimeMinutes ?? 60, sla?.ResolutionTimeMinutes ?? 480); store.AddIncident(x); store.AddHistory(new IncidentHistory(x.Id, actor, "INCIDENT_CREATED", null, x.Status.ToString())); await store.SaveChangesAsync(ct); if (alert is not null) { alert.LinkIncident(x.Id); await store.SaveChangesAsync(ct); } await NotifyAdmins("INCIDENT_CREATED", x.IncidentNumber, x.Title, AlertSeverity.Major, "Incident", x.Id, $"/incidents/{x.Id}", ct); return await IncidentResponseRequired(x.Id, ct); }
-    public async Task AssignAsync(Guid id, Guid userId, Guid actor, CancellationToken ct) { if (!await store.CanAssignIncidentToAsync(userId, ct)) throw new InvalidOperationException("Un incident ne peut être affecté qu'à un technicien actif."); var x = await IncidentRequired(id, ct); var old = x.Status.ToString(); x.Assign(userId, actor); store.AddHistory(new(x.Id, actor, "INCIDENT_ASSIGNED", old, x.Status.ToString(), userId.ToString())); store.AddNotification(new(userId, "INCIDENT_ASSIGNED", x.IncidentNumber, x.Title, AlertSeverity.Major, "Incident", x.Id, $"/incidents/{x.Id}")); await store.SaveChangesAsync(ct); }
-    public async Task StartAsync(Guid id, Guid actor, CancellationToken ct) => await Change(id, actor, "INCIDENT_STARTED", x => x.Start(), ct); public async Task PendingAsync(Guid id, Guid actor, CancellationToken ct) => await Change(id, actor, "INCIDENT_PENDING", x => x.Pending(), ct); public async Task ResolveIncidentAsync(Guid id, ResolveIncidentRequest r, Guid actor, CancellationToken ct) { var x = await IncidentRequired(id, ct); var old = x.Status.ToString(); x.Resolve(r.Summary, r.RootCause); store.AddHistory(new(x.Id, actor, "INCIDENT_RESOLVED", old, x.Status.ToString(), r.Summary)); await store.SaveChangesAsync(ct); }
+    public Task<IReadOnlyCollection<IncidentResponse>> IncidentsAsync(CancellationToken ct) => store.GetIncidentsAsync(ct); public Task<IncidentDetailResponse?> IncidentAsync(Guid id, CancellationToken ct) => store.GetIncidentDetailAsync(id, ct);
+    /// <summary>
+    /// Crée un incident ou rattache l'alerte à un incident récent du même SI.
+    /// Cette corrélation évite plusieurs tickets lorsque plusieurs endpoints
+    /// tombent à cause d'une même panne globale.
+    /// </summary>
+    public async Task<IncidentResponse> CreateIncidentAsync(CreateIncidentRequest r, Guid actor, CancellationToken ct) { Alert? alert = null; if (r.AlertId.HasValue) { alert = await AlertRequired(r.AlertId.Value, ct); if (alert.IncidentId.HasValue) throw new InvalidOperationException("Cette alerte possède déjà un incident."); var correlated=await store.FindCorrelatedIncidentAsync(alert.SystemId,DateTime.UtcNow.AddMinutes(-30),ct);if(correlated is not null){alert.LinkIncident(correlated.Id);store.AddHistory(new(correlated.Id,actor,"ALERT_CORRELATED",details:alert.AlertNumber));await store.SaveChangesAsync(ct);return await IncidentResponseRequired(correlated.Id,ct);} } var priority = r.Priority;
+    // La priorité choisit la politique SLA active et fixe immédiatement les échéances.
+    var sla = await store.GetSlaForAsync(priority, ct); var x = new Incident($"INC-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}", r.AlertId, r.SystemId ?? alert?.SystemId, r.EndpointId ?? alert?.EndpointId, r.Title, r.Description, r.Category, priority, actor, sla?.Id, sla?.ResponseTimeMinutes ?? 60, sla?.ResolutionTimeMinutes ?? 480); store.AddIncident(x); store.AddHistory(new IncidentHistory(x.Id, actor, "INCIDENT_CREATED", null, x.Status.ToString())); await store.SaveChangesAsync(ct); if (alert is not null) { alert.LinkIncident(x.Id); await store.SaveChangesAsync(ct); } await NotifyAdmins("INCIDENT_CREATED", x.IncidentNumber, x.Title, AlertSeverity.Major, "Incident", x.Id, $"/incidents/{x.Id}", ct); await incidentNotifications.DispatchCriticalAsync(x,"Escalade superviseur puis manager IT",ct); return await IncidentResponseRequired(x.Id, ct); }
+    public async Task AssignAsync(Guid id, Guid userId, Guid actor, CancellationToken ct) { if (!await store.CanAssignIncidentToAsync(userId, ct)) throw new InvalidOperationException("Un incident ne peut être affecté qu'à un technicien actif."); var x = await IncidentRequired(id, ct); var old = x.Status.ToString(); x.Assign(userId, actor); store.AddHistory(new(x.Id, actor, "INCIDENT_ASSIGNED", old, x.Status.ToString(), userId.ToString())); store.AddNotification(new(userId, "INCIDENT_ASSIGNED", x.IncidentNumber, x.Title, AlertSeverity.Major, "Incident", x.Id, $"/incidents/{x.Id}")); await store.SaveChangesAsync(ct); await incidentNotifications.DispatchCriticalAsync(x,"Technicien affecté, escalade superviseur puis manager IT",ct); }
+    public async Task StartAsync(Guid id, Guid actor, CancellationToken ct) => await Change(id, actor, "INCIDENT_STARTED", x => x.Start(), ct); public async Task PendingAsync(Guid id, Guid actor, CancellationToken ct) => await Change(id, actor, "INCIDENT_PENDING", x => x.Pending(), ct); public async Task ResolveIncidentAsync(Guid id, ResolveIncidentRequest r, Guid actor, CancellationToken ct) { var x = await IncidentRequired(id, ct); var old = x.Status.ToString(); x.Resolve(r.Summary, r.RootCause, r.CorrectiveAction, r.PreventiveAction, r.ResolutionEvidence); store.AddHistory(new(x.Id, actor, "INCIDENT_RESOLVED", old, x.Status.ToString(), r.Summary)); await store.SaveChangesAsync(ct); }
     public async Task CloseIncidentAsync(Guid id, Guid actor, CancellationToken ct) => await Change(id, actor, "INCIDENT_CLOSED", x => x.Close(actor), ct); public async Task ReopenAsync(Guid id, Guid actor, CancellationToken ct) => await Change(id, actor, "INCIDENT_REOPENED", x => x.Reopen(), ct); public async Task CommentAsync(Guid id, AddCommentRequest r, Guid actor, CancellationToken ct) { await IncidentRequired(id, ct); store.AddComment(new(id, actor, r.Content, r.CommentType, r.IsInternal)); store.AddHistory(new(id, actor, "INCIDENT_COMMENT_ADDED", details: r.Content)); await store.SaveChangesAsync(ct); }
     public async Task<IReadOnlyCollection<SlaPolicyResponse>> SlasAsync(CancellationToken ct) => (await store.GetSlasAsync(ct)).Select(Map).ToArray(); public async Task<SlaPolicyResponse> CreateSlaAsync(SlaPolicyRequest r, CancellationToken ct) { await EnsureUniqueActiveSla(r.Priority, null, ct); var x = new SlaPolicy(r.Name, r.Description, r.Priority, r.ResponseTimeMinutes, r.ResolutionTimeMinutes, r.WarningPercentage); store.AddSla(x); await store.SaveChangesAsync(ct); return Map(x); }
     public async Task<SlaPolicyResponse> UpdateSlaAsync(Guid id, SlaPolicyRequest r, CancellationToken ct) { var x = await store.GetSlaAsync(id, ct) ?? throw new KeyNotFoundException("SLA introuvable."); if (x.IsActive) await EnsureUniqueActiveSla(r.Priority, id, ct); x.Update(r.Name, r.Description, r.Priority, r.ResponseTimeMinutes, r.ResolutionTimeMinutes, r.WarningPercentage); await store.SaveChangesAsync(ct); return Map(x); }
     public async Task SetSlaActiveAsync(Guid id, bool value, CancellationToken ct) { var x = await store.GetSlaAsync(id, ct) ?? throw new KeyNotFoundException("SLA introuvable."); if (value) await EnsureUniqueActiveSla(x.Priority, id, ct); x.SetActive(value); await store.SaveChangesAsync(ct); }
+    /// <summary>Recalcule les SLA ouverts et notifie une seule fois au passage à Breached.</summary>
     public async Task RefreshSlasAsync(CancellationToken ct) { foreach (var x in await store.GetOpenIncidentsAsync(ct)) { var old = x.SlaStatus; x.RefreshSla(DateTime.UtcNow); if (old != SlaStatus.Breached && x.SlaStatus == SlaStatus.Breached) await NotifyAdmins("SLA_BREACHED", x.IncidentNumber, x.Title, AlertSeverity.Critical, "Incident", x.Id, $"/incidents/{x.Id}", ct); } await store.SaveChangesAsync(ct); }
     public async Task<IReadOnlyCollection<NotificationResponse>> NotificationsAsync(Guid userId, CancellationToken ct) => (await store.GetNotificationsAsync(userId, ct)).Select(Map).ToArray(); public async Task ReadNotificationAsync(Guid id, Guid userId, CancellationToken ct) { var x = await store.GetNotificationAsync(id, userId, ct) ?? throw new KeyNotFoundException("Notification introuvable."); x.Read(); await store.SaveChangesAsync(ct); }
     public async Task ReadAllAsync(Guid userId, CancellationToken ct) { foreach (var x in await store.GetNotificationsAsync(userId, ct)) x.Read(); await store.SaveChangesAsync(ct); }

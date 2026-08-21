@@ -1,3 +1,4 @@
+/** Coquille principale : navigation adaptée au rôle, session et zone de contenu. */
 import { Component } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { NgIf } from '@angular/common';

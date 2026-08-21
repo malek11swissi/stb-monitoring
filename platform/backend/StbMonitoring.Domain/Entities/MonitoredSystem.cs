@@ -1,4 +1,5 @@
 namespace StbMonitoring.Domain.Entities;
+/// <summary>Agrégat racine d'un SI STB dont l'état dépend de ses endpoints actifs.</summary>
 public sealed class MonitoredSystem
 {
     private MonitoredSystem() { }

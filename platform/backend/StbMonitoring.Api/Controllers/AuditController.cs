@@ -1,3 +1,4 @@
+// API de consultation administrative des traces d'audit.
 using Microsoft.AspNetCore.Authorization;using Microsoft.AspNetCore.Mvc;using StbMonitoring.Application.Contracts;using StbMonitoring.Application.Interfaces;using StbMonitoring.Domain.Constants;
 namespace StbMonitoring.Api.Controllers;
 [ApiController,Route("api/audit"),Authorize(Policy=PermissionNames.AuditRead)]

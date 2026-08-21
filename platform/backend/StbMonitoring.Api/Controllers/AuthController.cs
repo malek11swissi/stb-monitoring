@@ -1,3 +1,4 @@
+// Frontière HTTP de l'identité : login, renouvellement, profil et mot de passe.
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

@@ -1,3 +1,4 @@
+/** Test minimal vérifiant la création de la coquille Angular. */
 import { TestBed } from '@angular/core/testing';
 import { AppComponent } from './app.component';
 import { provideHttpClient } from '@angular/common/http';

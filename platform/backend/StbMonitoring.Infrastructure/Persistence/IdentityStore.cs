@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using StbMonitoring.Application.Interfaces;
 using StbMonitoring.Domain.Entities;
 namespace StbMonitoring.Infrastructure.Persistence;
+/// <summary>Implémentation PostgreSQL des recherches utilisateurs et de l'audit.</summary>
 public sealed class IdentityStore(MonitoringDbContext db) : IIdentityStore
 {
     private IQueryable<User> Users => db.Users;

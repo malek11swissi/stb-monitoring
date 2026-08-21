@@ -1,4 +1,5 @@
 namespace StbMonitoring.Domain.Entities;
+/// <summary>Échange fonctionnel ou technique ajouté à la chronologie d'un incident.</summary>
 public sealed class IncidentComment
 {
     private IncidentComment() { }

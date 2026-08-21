@@ -1,4 +1,5 @@
 namespace StbMonitoring.Domain.Entities;
+/// <summary>Anomalie dédupliquée pouvant être acquittée, résolue puis clôturée.</summary>
 
 public sealed class Alert
 {

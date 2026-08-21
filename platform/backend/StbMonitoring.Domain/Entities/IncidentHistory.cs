@@ -1,4 +1,5 @@
 namespace StbMonitoring.Domain.Entities;
+/// <summary>Historique immuable des transitions et modifications d'un incident.</summary>
 public sealed class IncidentHistory
 {
     private IncidentHistory() { }

@@ -1,7 +1,8 @@
-using System.Security.Claims;using Microsoft.AspNetCore.Authorization;using Microsoft.AspNetCore.Mvc;using StbMonitoring.Application.Contracts;using StbMonitoring.Application.Interfaces;using StbMonitoring.Domain.Constants;using StbMonitoring.Domain.Entities;
+// API du catalogue SI, des endpoints, contrôles manuels et preuves techniques.
+using System.Security.Claims;using System.Text;using Microsoft.AspNetCore.Authorization;using Microsoft.AspNetCore.Mvc;using Microsoft.EntityFrameworkCore;using StbMonitoring.Application.Contracts;using StbMonitoring.Application.Interfaces;using StbMonitoring.Domain.Constants;using StbMonitoring.Domain.Entities;using StbMonitoring.Infrastructure.Persistence;
 namespace StbMonitoring.Api.Controllers;
 [ApiController,Route("api/systems"),Authorize]
-public sealed class SystemsController(IMonitoringService monitoring,IIdentityStore identity):ControllerBase
+public sealed class SystemsController(IMonitoringService monitoring,IIdentityStore identity,MonitoringDbContext db):ControllerBase
 {
  [HttpGet,Authorize(Policy=PermissionNames.SystemsRead)]public async Task<IActionResult>All([FromQuery]bool includeArchived,CancellationToken ct)=>Ok(await monitoring.GetSystemsAsync(includeArchived,ct));
  [HttpGet("{id:guid}"),Authorize(Policy=PermissionNames.SystemsRead)]public async Task<IActionResult>One(Guid id,CancellationToken ct){var x=await monitoring.GetSystemAsync(id,ct);return x is null?NotFound():Ok(x);}
@@ -16,5 +17,6 @@ public sealed class SystemsController(IMonitoringService monitoring,IIdentitySto
  [HttpDelete("endpoints/{id:guid}"),Authorize(Policy=PermissionNames.SystemsManage)]public async Task<IActionResult>DeleteEndpoint(Guid id,CancellationToken ct){await monitoring.DeleteEndpointAsync(id,ct);await Audit("ENDPOINT_DELETED",id,ct);return NoContent();}
  [HttpPost("endpoints/{id:guid}/execute"),Authorize(Policy=PermissionNames.ChecksExecute)]public async Task<IActionResult>Execute(Guid id,CancellationToken ct){var x=await monitoring.ExecuteEndpointAsync(id,true,Actor(),ct);await Audit("CHECK_TRIGGERED_MANUALLY",id,ct);return Ok(x);}
  [HttpGet("checks"),Authorize(Policy=PermissionNames.ChecksRead)]public async Task<IActionResult>Results([FromQuery]Guid? systemId,[FromQuery]Guid? endpointId,[FromQuery]MonitoringStatus? status,[FromQuery]DateTime? from,[FromQuery]DateTime? to,CancellationToken ct,[FromQuery]int take=100)=>Ok(await monitoring.GetResultsAsync(systemId,endpointId,status,from,to,take,ct));
+ [HttpGet("checks/{id:guid}/evidence"),Authorize(Policy=PermissionNames.ChecksRead)]public async Task<IActionResult>Evidence(Guid id,CancellationToken ct){var x=await db.CheckResults.AsNoTracking().Include(r=>r.Endpoint).Include(r=>r.System).SingleOrDefaultAsync(r=>r.Id==id,ct);if(x is null)return NotFound();var json=System.Text.Json.JsonSerializer.Serialize(new{x.Id,system=x.System.Name,endpoint=x.Endpoint.Name,x.Status,x.Success,x.StartedAt,x.CompletedAt,x.DurationMs,x.HttpStatusCode,x.ErrorType,x.ErrorMessage,x.TriggeredManually,x.Metadata},new System.Text.Json.JsonSerializerOptions{WriteIndented=true});return File(Encoding.UTF8.GetBytes(json),"application/json",$"preuve-controle-{x.Id}.json");}
  private Guid Actor()=>Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);private async Task Audit(string action,Guid entityId,CancellationToken ct){identity.AddAudit(new AuditLog(Actor(),action,action.StartsWith("SYSTEM")?"System":"MonitoringEndpoint",entityId,null,HttpContext.Connection.RemoteIpAddress?.ToString()));await identity.SaveChangesAsync(ct);}
 }

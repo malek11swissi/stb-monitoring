@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using StbMonitoring.Application.Contracts;
 using StbMonitoring.Application.Interfaces;
 namespace StbMonitoring.Api.Security;
+/// <summary>Émet le JWT signé contenant l'identité et le rôle fixe de l'utilisateur.</summary>
 public sealed class JwtTokenService(IConfiguration config) : ITokenService
 {
     public TokenResult Generate(AuthenticatedUser u)

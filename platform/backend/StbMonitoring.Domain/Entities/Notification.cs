@@ -1,4 +1,5 @@
 namespace StbMonitoring.Domain.Entities;
+/// <summary>Information interne adressée à un utilisateur et marquable comme lue.</summary>
 public sealed class Notification
 {
     private Notification() { }

@@ -1,3 +1,4 @@
+/** Administration des comptes, rôles fixes et activation/désactivation. */
 import {Component,OnInit} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {HttpClient} from '@angular/common/http';

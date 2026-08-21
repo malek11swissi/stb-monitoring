@@ -1,4 +1,5 @@
 namespace StbMonitoring.Domain.Entities;
+/// <summary>Trace une action sensible, son auteur, sa cible et son résultat.</summary>
 public sealed class AuditLog
 {
     private AuditLog() { }

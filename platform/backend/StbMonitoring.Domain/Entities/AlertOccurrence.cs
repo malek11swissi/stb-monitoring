@@ -1,4 +1,5 @@
 namespace StbMonitoring.Domain.Entities;
+/// <summary>Répétition horodatée reliant une alerte à sa preuve CheckResult.</summary>
 public sealed class AlertOccurrence
 {
     private AlertOccurrence() { }

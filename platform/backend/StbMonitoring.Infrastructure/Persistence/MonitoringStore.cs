@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;using StbMonitoring.Application.Interfaces;using StbMonitoring.Domain.Entities;
 namespace StbMonitoring.Infrastructure.Persistence;
+/// <summary>Implémentation PostgreSQL du catalogue SI et de l'historique des contrôles.</summary>
 public sealed class MonitoringStore(MonitoringDbContext db):IMonitoringStore
 {
  private IQueryable<MonitoredSystem> Systems=>db.Systems.Include(x=>x.Endpoints);

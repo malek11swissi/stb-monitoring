@@ -1,10 +1,11 @@
+/** Client HTTP et modèles frontend du catalogue SI, des endpoints et contrôles. */
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 
 export type MonitoringStatus = 'Unknown'|'Up'|'Degraded'|'Down';
 export interface MonitoredSystem { id:string;code:string;name:string;description:string;environment:string;criticality:string;owner?:string;monitoringEnabled:boolean;isArchived:boolean;status:MonitoringStatus;lastCheckedAt?:string;endpointCount:number;upCount:number;degradedCount:number;downCount:number }
 export interface Endpoint { id:string;systemId:string;name:string;url:string;checkType:string;httpMethod:string;expectedStatusCode:number;timeoutSeconds:number;intervalSeconds:number;degradedThresholdMs:number;downThresholdMs:number;isCritical:boolean;isActive:boolean;expectedJsonProperty?:string;expectedJsonValue?:string;status:MonitoringStatus;lastCheckedAt?:string;nextCheckAt:string;lastDurationMs?:number;lastError?:string }
-export interface CheckResult { id:string;systemId:string;endpointId:string;endpointName:string;status:MonitoringStatus;success:boolean;startedAt:string;completedAt:string;durationMs:number;httpStatusCode?:number;errorType?:string;errorMessage?:string;triggeredManually:boolean }
+export interface CheckResult { id:string;systemId:string;endpointId:string;endpointName:string;status:MonitoringStatus;success:boolean;startedAt:string;completedAt:string;durationMs:number;httpStatusCode?:number;errorType?:string;errorMessage?:string;triggeredManually:boolean;metadata?:string }
 export interface SystemDetail { system:MonitoredSystem;endpoints:Endpoint[];recentResults:CheckResult[] }
 export interface SystemDraft { code:string;name:string;description:string;environment:string;criticality:string;owner:string }
 export interface EndpointDraft { name:string;url:string;checkType:string;httpMethod:string;expectedStatusCode:number;timeoutSeconds:number;intervalSeconds:number;degradedThresholdMs:number;downThresholdMs:number;isCritical:boolean;expectedJsonProperty:string;expectedJsonValue:string }
@@ -25,4 +26,5 @@ export interface EndpointDraft { name:string;url:string;checkType:string;httpMet
   deleteEndpoint(id:string){return this.http.delete<void>(`${this.api}/endpoints/${id}`)}
   execute(id:string){return this.http.post<CheckResult>(`${this.api}/endpoints/${id}/execute`,{})}
   checks(filters:{systemId?:string;endpointId?:string;status?:string;from?:string;to?:string;take?:number}){const q=new URLSearchParams();Object.entries(filters).forEach(([k,v])=>{if(v!==undefined&&v!=='')q.set(k,String(v))});return this.http.get<CheckResult[]>(`${this.api}/checks?${q}`)}
+  evidence(id:string){return this.http.get(`${this.api}/checks/${id}/evidence`,{responseType:'blob'})}
 }

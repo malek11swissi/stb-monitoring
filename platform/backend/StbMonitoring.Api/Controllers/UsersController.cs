@@ -1,3 +1,4 @@
+// API d'administration des comptes, protégée par les droits utilisateurs.
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

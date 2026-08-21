@@ -1,4 +1,5 @@
 namespace StbMonitoring.Domain.Entities;
+/// <summary>Compte authentifiable et rôle fixe utilisé par les autorisations.</summary>
 
 public sealed class User
 {

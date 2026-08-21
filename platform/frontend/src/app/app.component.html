@@ -7,6 +7,7 @@
       <a routerLink="/systems" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('systems.read')"><span>◉</span>Systèmes supervisés</a>
       <a routerLink="/alerts" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('alerts.read')"><span>⚠</span>Alertes</a>
       <a routerLink="/incidents" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('incidents.read')"><span>◆</span>Incidents</a>
+      <a routerLink="/calendar" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('maintenance.read')"><span>▣</span>Calendrier</a>
       <span class="nav-label">ADMINISTRATION</span>
       <a routerLink="/users" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('users.read')"><span>♙</span>Utilisateurs</a>
       <a routerLink="/audit" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('audit.read')"><span>≣</span>Journal d’audit</a>

@@ -1,3 +1,4 @@
+/** Administration des délais SLA associés aux priorités d'incident. */
 import {CommonModule} from '@angular/common';
 import {Component,OnInit} from '@angular/core';
 import {FormsModule} from '@angular/forms';

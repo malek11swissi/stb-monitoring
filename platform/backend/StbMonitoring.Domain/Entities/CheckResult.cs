@@ -1,4 +1,5 @@
 namespace StbMonitoring.Domain.Entities;
+/// <summary>Résultat immuable servant de preuve technique d'un contrôle.</summary>
 public sealed class CheckResult
 {
     private CheckResult() { }

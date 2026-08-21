@@ -29,6 +29,11 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Oracle: "User Id=core_user;Password=core_password;Data Source=core-oracle:1521/FREEPDB1;Connection Timeout=3"
       Lab__AdminKey: change-this-lab-key
-    ports: ["5101:8080"]
+      Kestrel__Endpoints__Http__Url: "http://+:8080"
+      Kestrel__Endpoints__Https__Url: "https://+:8443"
+      Kestrel__Endpoints__Https__Certificate__Path: "/https/stb-lab.pfx"
+      Kestrel__Endpoints__Https__Certificate__Password: "ChangeMe_Lab_TLS_123!"
+    volumes: ["./certificates:/https:ro"]
+    ports: ["5101:8080", "7101:8443"]
 volumes:
   core_oracle_data:

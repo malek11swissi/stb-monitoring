@@ -1,0 +1,2383 @@
+ 
+TWIN 
+Plateforme SaaS Multi-Tenant de 
+Bien-Être en Entreprise 
+Réalisé par: Malek Jendoubi 
+  
+Encadré par: Monsieur Hamda Yedes 
+  
+Encadrant ESPRIT: Monsieur Hamdi Braiek 
+  
+Encadrant Entreprise: 
+  
+2025 - 2026 
+
+
+
+Dédicaces
+À mes chers parents,
+pour leur amour inconditionnel, leurs sacrifices, leur patience
+et leurs encouragements constants tout au long de mon parcours.
+Aucun mot ne saurait exprimer pleinement ma gratitude
+et ma reconnaissance envers eux.
+À mes chers frères, Skander et Issam,
+pour leur présence, leur affection et leur soutien précieux.
+À mes amis et collègues,
+pour les moments partagés, leur encouragement
+et leur soutien durant toutes ces années d’études.
+Aux membres du comité des étudiants,
+avec qui j’ai eu le plaisir de partager de nombreuses expériences,
+et tout particulièrement à son président, Mohamed Aziz Grissa,
+mon ami et mon frère, pour sa présence, sa confiance
+et son soutien tout au long de ce parcours.
+À tous ceux qui ont cru en moi
+et qui m’ont accompagné, de près ou de loin,
+dans la réalisation de ce travail.
+Je vous dédie humblement ce travail.
+i
+
+Remerciements
+Au terme de ce travail, je tiens à exprimer ma profonde gratitude envers toutes les personnes
+qui ont contribué, de près ou de loin, à la réalisation de ce projet de fin d’études.
+Je tiens tout particulièrement à remercier monencadrant académique,Monsieur Hamdi
+Braiek, pour son encadrement, ses précieux conseils, sa disponibilité et son accompagnement
+tout au long de ce projet.
+J’adresse également mes sincères remerciements à monencadrant professionnel,Mon-
+sieur Hamda Yedes, pour son accueil, son accompagnement technique, son partage d’expé-
+rience et sa confiance durant toute la période du stage.
+Je souhaite également exprimer ma reconnaissance àMonsieur Youssef Boussaada,CEO
+& Co-Founder de Wellness Hub, pour m’avoir offert l’opportunité d’effectuer ce stage au
+sein de son entreprise, ainsi que pour sa confiance, sa vision et les conditions favorables qui
+ont permis la réussite de ce projet.
+Mesremerciementss’adressentégalementàl’ensembleducorpsprofessoraletadministratif
+del’École Supérieure Privée d’Ingénierie et de Technologies (ESPRIT)pour la qualité de
+la formation dispensée tout au long de mon cursus d’ingénieur.
+Enfin,jeremercielesmembresdujurypourl’honneurqu’ilsmefontenacceptantd’évaluer
+ce travail, ainsi que toutes les personnes qui, par leurs encouragements et leur soutien, ont
+contribué à l’aboutissement de ce projet.
+ii
+
+Résumé
+Le bien-être des employés est devenu un enjeu stratégique majeur pour les entreprises, qui
+peinent souvent à proposer des solutions unifiées, personnalisées et mesurables. Ce projet de
+fin d’études consiste à concevoir, développer et déployerWellnessHub, une plateforme SaaS
+multi-tenant dédiée à la gestion du bien-être en entreprise, s’appuyant sur une architecture
+microservices distribuée et sur plusieurs briques d’intelligence artificielle.
+La solution repose sur unserveur centralmutualisé (API Gateway, Eureka, gestion des
+experts, messagerie temps réel, certification par OCR/IA, administration globale) et sur
+desserveurs cloud dédiés par entreprise cliente, chacun hébergeant son propre frontend
+Ressources Humaines/Employé, sa propre instance métier et sa propre base de données,
+exposés sur un sous-domaine dédié. Cette architecture garantit à la fois la mutualisation des
+services transverses (experts, chat, notifications, IA) et l’isolation stricte des données de
+chaque entreprise cliente.
+Le rapport détaille la démarche de conception suivie (méthodologie SCRUM, backlog
+produit, sprints), les choix technologiques (Spring Boot, React, PostgreSQL, RabbitMQ,
+FastAPI/OCR, OpenAI), ainsi que la réalisation de seize releases fonctionnelles couvrant
+l’authentification, la gestion administrative, la gestion RH et employé, la gestion des experts,
+la réservation de sessions, la messagerie, le portefeuille virtuel, le parcours de bien-être
+généré par IA, la validation automatique des certifications par OCR, et un chatbot intelligent.
+Une chaîne complète de DevOps (Jenkins, Docker, SonarQube, JaCoCo, k6, Prometheus,
+Grafana) accompagne le cycle de développement afin de garantir la qualité, la performance et
+la supervision continue de la plateforme.
+Mots-clés :Bien-être en entreprise, SaaS multi-tenant, microservices, Spring Boot, React,
+intelligence artificielle, OCR, chatbot, DevOps, CI/CD.
+iii
+
+Table des matières
+Dédicaces i
+Remerciements ii
+Résumé iii
+Table des figures viii
+Liste des tableaux xi
+Liste des abréviations xii
+Introduction Générale xiii
+1 Cadre Général du Projet 1
+Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 1
+1.1 Présentation de l’Entreprise d’Accueil . . . . . . . . . . . . . . . . . . . . 1
+1.1.1 Historique . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 1
+1.1.2 Activités et Domaine d’Activité . . . . . . . . . . . . . . . . . . . 2
+1.1.3 Missions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+1.1.4 Vision . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+1.1.5 Valeurs . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+1.2 Contexte du Projet . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+1.2.1 Contexte . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+1.2.2 Problématique . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+1.2.3 Objectifs du Projet . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+1.3 Étude de l’Existant . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+1.3.1 Analyse des solutions existantes . . . . . . . . . . . . . . . . . . . 5
+1.3.2 Analyse comparative et limites des solutions existantes . . . . . . . 5
+1.4 Étude Concurrentielle . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+iv
+
+1.5 Solution Proposée : WellnessHub . . . . . . . . . . . . . . . . . . . . . . . 6
+Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+2 Analyse des Besoins et Méthodologie 8
+Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+2.1 Identification des Acteurs . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+2.2 Analyse des Besoins . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+2.2.1 Besoins Fonctionnels . . . . . . . . . . . . . . . . . . . . . . . . . 9
+2.2.2 Besoins Non Fonctionnels . . . . . . . . . . . . . . . . . . . . . . 11
+2.3 Méthodologie de Gestion de Projet : SCRUM . . . . . . . . . . . . . . . . 12
+2.3.1 Rôles SCRUM . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+2.3.2 Product Backlog . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+2.3.3 Organisation Agile – Planning des Sprints avec Jira . . . . . . . . . 16
+2.3.4 Organisation Agile – Tableau Jira . . . . . . . . . . . . . . . . . . 17
+2.3.5 Diagramme de Gantt . . . . . . . . . . . . . . . . . . . . . . . . . 18
+2.3.6 Gestion du Code Source avec GitHub . . . . . . . . . . . . . . . . 18
+2.3.7 Synthèse . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+2.4 Choix Technologiques . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+2.4.1 Développement Frontend . . . . . . . . . . . . . . . . . . . . . . . 19
+2.4.2 Backend et Microservices . . . . . . . . . . . . . . . . . . . . . . 19
+2.4.3 Intelligence Artificielle . . . . . . . . . . . . . . . . . . . . . . . . 19
+2.4.4 Gestion des données . . . . . . . . . . . . . . . . . . . . . . . . . 20
+2.4.5 Gestion du code source . . . . . . . . . . . . . . . . . . . . . . . . 20
+2.4.6 DevOps . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+2.4.7 Justification synthétique des choix . . . . . . . . . . . . . . . . . . 21
+Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+3 Conception 23
+Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+3.1 Architecture générale . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+3.2 Architecture physique (déploiement) . . . . . . . . . . . . . . . . . . . . . 24
+3.3 Architecture logique . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26
+3.3.1 Architecture technique et échanges entre microservices . . . . . . . 27
+3.4 Diagrammes UML globaux . . . . . . . . . . . . . . . . . . . . . . . . . . 27
+3.4.1 Diagramme de cas d’utilisation global . . . . . . . . . . . . . . . . 28
+3.4.2 Diagrammes de séquence des principaux scénarios . . . . . . . . . 29
+3.4.3 Diagramme de classes global . . . . . . . . . . . . . . . . . . . . . 32
+3.5 Conception de la base de données . . . . . . . . . . . . . . . . . . . . . . 33
+3.6 Maquettes (Figma) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 33
+Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 37
+v
+
+4 Réalisation 38
+Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 38
+4.1 Réalisation1–GestiondesAccès,del’AuthentificationetdesProfilsUtilisateurs 38
+4.1.1 Vue d’ensemble du module d’accès . . . . . . . . . . . . . . . . . 38
+4.1.2 Page d’accueil . . . . . . . . . . . . . . . . . . . . . . . . . . . . 39
+4.1.3 Orientation vers le parcours d’inscription . . . . . . . . . . . . . . 39
+4.1.4 Inscription de l’employé . . . . . . . . . . . . . . . . . . . . . . . 40
+4.1.5 Inscription du responsable RH . . . . . . . . . . . . . . . . . . . . 42
+4.1.6 Inscription de l’expert . . . . . . . . . . . . . . . . . . . . . . . . 44
+4.1.7 Connexion et contrôle des statuts . . . . . . . . . . . . . . . . . . . 45
+4.1.8 Réinitialisation du mot de passe . . . . . . . . . . . . . . . . . . . 46
+4.2 Réalisation 2 – Administration et Pilotage du BackOffice . . . . . . . . . . 46
+4.2.1 Vue d’ensemble du BackOffice . . . . . . . . . . . . . . . . . . . . 47
+4.2.2 Agrégation inter-services et sécurité d’administration . . . . . . . . 47
+4.2.3 Tableau de bord administrateur . . . . . . . . . . . . . . . . . . . . 47
+4.2.4 Gestion des comptes administrateurs . . . . . . . . . . . . . . . . . 47
+4.2.5 Gestion des entreprises et des budgets . . . . . . . . . . . . . . . . 48
+4.2.6 Allocation des budgets, wallets et transactions d’entreprise . . . . . 49
+4.2.7 Supervision des experts, certifications et paiements . . . . . . . . . 49
+4.2.8 Paiements experts et ledger financier . . . . . . . . . . . . . . . . . 50
+4.2.9 Gestion des contenus publics et traçabilité . . . . . . . . . . . . . . 51
+4.2.10 Journal d’audit et traçabilité . . . . . . . . . . . . . . . . . . . . . 52
+4.3 Réalisation 3 – Gestion des Entreprises, des Ressources Humaines et des
+Employés . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 52
+4.3.1 Vue d’ensemble du module entreprise et RH . . . . . . . . . . . . 52
+4.3.2 Gestion des entreprises et rattachement des utilisateurs . . . . . . . 52
+4.3.3 Gestion des employés . . . . . . . . . . . . . . . . . . . . . . . . . 54
+4.3.4 Budgets, portefeuilles et affectation des collaborateurs . . . . . . . 56
+4.3.5 Suivi RH, présences et rapports . . . . . . . . . . . . . . . . . . . 57
+4.4 Réalisation 4 – Gestion des Experts, des Sessions et du Parcours Bien-Être . 58
+4.4.1 Vue d’ensemble du module expert et parcours bien-être . . . . . . . 58
+4.4.2 Gestion des experts, certifications et visibilité . . . . . . . . . . . . 58
+4.4.3 Disponibilités, tarification et création des sessions . . . . . . . . . 61
+4.4.4 Réservation, invitations et liste d’attente . . . . . . . . . . . . . . . 62
+4.4.5 Suivi des présences, clôture et revenus experts . . . . . . . . . . . 64
+4.4.6 Parcours bien-être, feedbacks et historique . . . . . . . . . . . . . . 65
+4.5 Réalisation 5 – Intelligence Artificielle et Automatisation . . . . . . . . . . 69
+4.5.1 Vue d’ensemble du module d’intelligence artificielle . . . . . . . . 69
+4.5.2 Pipeline OCR et prétraitement documentaire . . . . . . . . . . . . 69
+4.5.3 Classification, score de confiance et validation automatique . . . . . 71
+4.5.4 Application du résultat et gestion des cas incertains . . . . . . . . . 71
+4.5.5 Assistant conversationnel et pipeline RAG . . . . . . . . . . . . . . 72
+vi
+
+4.5.6 Base de connaissances et amélioration continue . . . . . . . . . . . 73
+4.5.7 Génération assistée du parcours bien-être . . . . . . . . . . . . . . 75
+4.5.8 Synthèse technique du module IA . . . . . . . . . . . . . . . . . . 78
+4.6 Réalisation 6 – Communication et Collaboration . . . . . . . . . . . . . . . 78
+4.6.1 Vue d’ensemble du module de communication . . . . . . . . . . . 78
+4.6.2 Messagerie temps réel . . . . . . . . . . . . . . . . . . . . . . . . 78
+4.6.3 Centre de notifications . . . . . . . . . . . . . . . . . . . . . . . . 79
+4.6.4 Synthèse du module . . . . . . . . . . . . . . . . . . . . . . . . . 80
+Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 80
+5 DevOps, Déploiement, Tests et Monitoring 81
+5.1 Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 81
+5.2 Architecture DevOps . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 81
+5.3 Intégration et Déploiement Continus . . . . . . . . . . . . . . . . . . . . . 82
+5.3.1 Pipeline CI . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 83
+5.3.2 Pipeline CD . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 84
+5.4 Conteneurisation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 85
+5.5 Déploiement . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 86
+5.6 Tests et Qualité Logicielle . . . . . . . . . . . . . . . . . . . . . . . . . . 87
+5.6.1 Tests automatisés . . . . . . . . . . . . . . . . . . . . . . . . . . . 87
+5.6.2 Analyse SonarQube . . . . . . . . . . . . . . . . . . . . . . . . . . 87
+5.6.3 Tests de performance k6 . . . . . . . . . . . . . . . . . . . . . . . 89
+5.7 Monitoring . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 90
+5.8 Sécurité de la Chaîne DevOps . . . . . . . . . . . . . . . . . . . . . . . . 92
+5.9 Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 93
+Conclusion Générale et Perspectives 94
+Bilan . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 94
+Difficultés Rencontrées . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 94
+Résultats . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 95
+Compétences Acquises . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 95
+Perspectives . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 95
+Bibliographie 97
+Webographie 98
+vii
+
+Table des figures
+1.1 Logo de l’entreprise d’accueil . . . . . . . . . . . . . . . . . . . . . . . . 2
+1.2 Organigramme de WellnessHub . . . . . . . . . . . . . . . . . . . . . . . 2
+2.1 Cycle de vie de la méthodologie agile SCRUM . . . . . . . . . . . . . . . 12
+2.2 Organisation des sprints dans Jira . . . . . . . . . . . . . . . . . . . . . . . 17
+2.3 Tableau Jira utilisé pour le suivi des tâches . . . . . . . . . . . . . . . . . . 17
+2.4 Diagramme de Gantt du projet WellnessHub . . . . . . . . . . . . . . . . . 18
+2.5 Gestion du code source de WellnessHub sur GitHub . . . . . . . . . . . . . 18
+3.1 Architecture générale de la plateforme WellnessHub . . . . . . . . . . . . . 24
+3.2 Architecture physique (déploiement) de la plateforme WellnessHub . . . . . 25
+3.3 Architecture logique de WellnessHub . . . . . . . . . . . . . . . . . . . . . 26
+3.4 Architecture d’intégration des services IA . . . . . . . . . . . . . . . . . . 27
+3.5 Diagramme de cas d’utilisation global de WellnessHub . . . . . . . . . . . 28
+3.6 Diagramme de séquence d’allocation du budget de l’administrateur vers
+l’employé . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+3.7 Diagramme de séquence de génération du parcours de bien-être personnalisé 30
+3.8 Diagramme de séquence de réservation et de paiement d’une session . . . . 31
+3.9 Diagramme de classes global relationnel de WellnessHub . . . . . . . . . . 32
+3.10 Maquettes Figma de la landing page et des parcours d’inscription . . . . . . 34
+3.11 Ensemble des maquettes Figma de l’espace Employé . . . . . . . . . . . . 34
+3.12 Ensemble des maquettes Figma de l’espace Responsable RH . . . . . . . . 35
+3.13 Ensemble des maquettes Figma de l’espace Expert . . . . . . . . . . . . . 36
+4.1 Page d’accueil de la plateforme WellnessHub . . . . . . . . . . . . . . . . 39
+4.2 Écran de sélection du profil à l’inscription . . . . . . . . . . . . . . . . . . 39
+4.3 Parcours d’inscription de l’employé . . . . . . . . . . . . . . . . . . . . . 41
+4.4 Parcours d’inscription du responsable RH . . . . . . . . . . . . . . . . . . 43
+4.5 Parcours d’inscription de l’expert . . . . . . . . . . . . . . . . . . . . . . . 44
+4.6 Email de bienvenue envoyé après activation du compte . . . . . . . . . . . 45
+viii
+
+Table des figures
+4.7 Écran de connexion et redirection vers le tableau de bord dédié . . . . . . . 46
+4.8 Parcours de réinitialisation du mot de passe . . . . . . . . . . . . . . . . . 46
+4.9 Tableau de bord multi-entreprises du BackOffice . . . . . . . . . . . . . . . 47
+4.10 Gestion des comptes administrateurs . . . . . . . . . . . . . . . . . . . . . 48
+4.11 Création et suivi des entreprises clientes . . . . . . . . . . . . . . . . . . . 48
+4.12 Contrôle du statut d’une entreprise . . . . . . . . . . . . . . . . . . . . . . 49
+4.13 Gestion budgétaire des entreprises . . . . . . . . . . . . . . . . . . . . . . 49
+4.14 Supervision des experts depuis le BackOffice . . . . . . . . . . . . . . . . 50
+4.15 Décisions administratives sur un expert . . . . . . . . . . . . . . . . . . . 50
+4.16 Paiements experts et traçabilité financière . . . . . . . . . . . . . . . . . . 51
+4.17 Traitement des demandes commerciales entrantes . . . . . . . . . . . . . . 51
+4.18 Administration des contenus publics et campagnes email . . . . . . . . . . 51
+4.19 Consultation du journal d’audit du BackOffice . . . . . . . . . . . . . . . . 52
+4.20 Vue synthétique du périmètre entreprise côté RH . . . . . . . . . . . . . . 53
+4.21 Tableau de bord Workforce Analytics du responsable RH . . . . . . . . . . 54
+4.22 Liste des employés de l’entreprise . . . . . . . . . . . . . . . . . . . . . . 55
+4.23 Formulaire d’ajout d’un employé . . . . . . . . . . . . . . . . . . . . . . . 55
+4.24 Consultation du profil d’un employé . . . . . . . . . . . . . . . . . . . . . 56
+4.25 Affectation de tokens à un collaborateur . . . . . . . . . . . . . . . . . . . 56
+4.26 Historique des transactions d’un employé . . . . . . . . . . . . . . . . . . 57
+4.27 Indicateurs de présence et d’engagement des collaborateurs . . . . . . . . . 57
+4.28 Rapports RH générés depuis l’espace entreprise . . . . . . . . . . . . . . . 58
+4.29 Tableau de bord de l’expert . . . . . . . . . . . . . . . . . . . . . . . . . . 59
+4.30 Gestion du profil professionnel de l’expert . . . . . . . . . . . . . . . . . . 60
+4.31 Suivi des certifications professionnelles . . . . . . . . . . . . . . . . . . . 60
+4.32 Configuration des disponibilités de l’expert . . . . . . . . . . . . . . . . . 61
+4.33 Création d’une session par l’expert . . . . . . . . . . . . . . . . . . . . . . 62
+4.34 Exploration des sessions par l’employé . . . . . . . . . . . . . . . . . . . . 63
+4.35 Confirmation de participation à une session . . . . . . . . . . . . . . . . . 63
+4.36 Validation de présence par l’expert . . . . . . . . . . . . . . . . . . . . . . 64
+4.37 Suivi financier côté expert . . . . . . . . . . . . . . . . . . . . . . . . . . 65
+4.38 Tableau de bord de l’employé . . . . . . . . . . . . . . . . . . . . . . . . . 66
+4.39 Évaluation quotidienne de l’état de bien-être . . . . . . . . . . . . . . . . . 66
+4.40 Résultat du parcours personnalisé de bien-être . . . . . . . . . . . . . . . . 67
+4.41 Retour d’expérience après une session . . . . . . . . . . . . . . . . . . . . 68
+4.42 Badges obtenus par l’employé . . . . . . . . . . . . . . . . . . . . . . . . 68
+4.43 Interface de dépôt du document de certification . . . . . . . . . . . . . . . 70
+4.44 Prévisualisation OCR et auto-remplissage des champs . . . . . . . . . . . . 71
+4.45 Redirection de l’expert vers la page de certification requise . . . . . . . . . 72
+4.46 Validation ou rejet manuel après analyse incertaine . . . . . . . . . . . . . 72
+4.47 Interface utilisateur de l’assistant conversationnel . . . . . . . . . . . . . . 73
+4.48 Gestion BackOffice de la base de connaissances . . . . . . . . . . . . . . . 74
+ix
+
+Table des figures
+4.49 Suivi des questions et amélioration continue du chatbot . . . . . . . . . . . 74
+4.50 Questionnaire d’évaluation du bien-être . . . . . . . . . . . . . . . . . . . 75
+4.51 Résultat de l’évaluation du bien-être . . . . . . . . . . . . . . . . . . . . . 76
+4.52 Parcours personnalisé généré avec l’assistance de l’intelligence artificielle . 77
+4.53 Prochaines sessions recommandées selon le questionnaire quotidien . . . . 77
+4.54 Suivi de la progression dans le tableau de bord employé . . . . . . . . . . . 78
+4.55 Interface de messagerie temps réel . . . . . . . . . . . . . . . . . . . . . . 79
+4.56 Centre de notifications . . . . . . . . . . . . . . . . . . . . . . . . . . . . 79
+5.1 Architecture DevOps globale de WellnessHub . . . . . . . . . . . . . . . . 82
+5.2 Tableau de bord Jenkins des jobs WellnessHub . . . . . . . . . . . . . . . 83
+5.3 Pipeline Jenkins orchestrateur . . . . . . . . . . . . . . . . . . . . . . . . 83
+5.4 Pipeline CI : compilation, tests unitaires et archivage des rapports . . . . . 84
+5.5 Pipeline CD : build Docker, push registry et déploiement Compose . . . . . 84
+5.6 Déploiement des services avec Docker Compose . . . . . . . . . . . . . . . 85
+5.7 Conteneurs WellnessHub en cours d’exécution . . . . . . . . . . . . . . . . 86
+5.8 Déploiement backend sur le serveur VPS . . . . . . . . . . . . . . . . . . . 86
+5.9 Déploiement du frontend React sur Vercel . . . . . . . . . . . . . . . . . . 87
+5.10 Vue d’ensemble SonarQube des projets WellnessHub . . . . . . . . . . . . 88
+5.11 Exécution du pipeline SonarQube dans Jenkins . . . . . . . . . . . . . . . 89
+5.12 Résultats des tests de performance k6 . . . . . . . . . . . . . . . . . . . . 90
+5.13 Cibles Prometheus configurées pour WellnessHub . . . . . . . . . . . . . . 91
+5.14 Vue d’ensemble Grafana de la plateforme . . . . . . . . . . . . . . . . . . 92
+5.15 Exemple de tableau de bord Grafana d’un microservice . . . . . . . . . . . 92
+5.16 Gestion sécurisée des credentials Jenkins . . . . . . . . . . . . . . . . . . . 93
+x
+
+Liste des tableaux
+1.1 Analyse comparative des principales plateformes de bien-être en entreprise . 6
+2.1 Acteurs de la plateforme WellnessHub . . . . . . . . . . . . . . . . . . . . 9
+2.2 Product Backlog synthétique de la plateforme WellnessHub . . . . . . . . . 13
+3.1 Organisation conceptuelle des données par domaine . . . . . . . . . . . . . 33
+5.1 Services principaux déclarés dans Docker Compose . . . . . . . . . . . . . 85
+5.2 Paramètres principaux des tests k6 . . . . . . . . . . . . . . . . . . . . . . 89
+xi
+
+Liste des abréviations
+AbréviationSignification
+AIArtificial Intelligence
+APIApplication Programming Interface
+CDContinuous Delivery/Deployment
+CIContinuous Integration
+DevOpsDevelopment and Operations
+HRHuman Resources
+HTTPSHyperText Transfer Protocol Secure
+IAIntelligence Artificielle
+JaCoCoJava Code Coverage – outil de mesure de couverture de tests
+JWTJSON Web Token
+k6outil de test de charge (Grafana k6)
+OCROptical Character Recognition
+OTPOne-Time Password
+P9595e percentile (mesure de latence)
+PDFPortable Document Format
+RESTRepresentational State Transfer
+RGPDRèglement Général sur la Protection des Données
+RHRessources Humaines
+SaaSSoftware as a Service
+SAGA Séquence d’Actions Compensables (pattern de transaction distri-
+buée)
+UMLUnified Modeling Language
+VPSVirtual Private Server
+xii
+
+Introduction Générale
+Le monde de l’entreprise connaît, depuis plusieurs années, une prise de conscience croissante
+autour de l’importance du bien-être physique et mental des employés. Le stress, l’épuisement
+professionnel (burnout) et le manque d’accompagnement personnalisé figurent parmi les
+principales causes de désengagement et de baisse de productivité au sein des organisations.
+Face à ce constat, de nombreuses entreprises cherchent à mettre en place des programmes de
+bien-être structurés, mais se heurtent à un manque d’outils numériques capables de centraliser,
+personnaliser et mesurer l’impact de ces initiatives.
+C’est dans ce contexte que s’inscrit le projetWellnessHub, une plateforme SaaS multi-
+tenant de gestion du bien-être en entreprise, conçue pour répondre aux besoins spécifiques
+de trois populations d’utilisateurs : lesressources humaines, qui pilotent les programmes
+de bien-être et le budget associé, lesemployés, qui en bénéficient directement à travers des
+sessions animées par des experts, et lesexperts, qui proposent leurs services (coaching,
+nutrition, activité physique, santé mentale, etc.). La plateforme est complétée par uneconsole
+d’administrationcentrale permettant de superviser l’ensemble des entreprises clientes, ainsi
+que par plusieurs briques d’intelligence artificielle(génération de parcours de bien-être
+personnalisés, validation automatique des certifications par OCR, chatbot conversationnel).
+Leprésentrapportretracel’ensembledeladémarchesuiviedurantceprojetdefind’études,
+de l’analyse du contexte et des besoins jusqu’à la mise en production, en passant par la
+conception détaillée et l’implémentation. Il est structuré en cinq chapitres :
+• Lepremier chapitreprésente le cadre général du projet : l’entreprise d’accueil, le
+contexte, la problématique, l’étude de l’existant et de la concurrence, ainsi que la
+solution proposée.
+• Ledeuxièmechapitredétaillel’analysedesbesoinsfonctionnelsetnonfonctionnels,la
+méthodologiedegestiondeprojetadoptée(SCRUM)ainsiqueleschoixtechnologiques
+retenus.
+• Letroisième chapitreprésente la conception de la solution : architecture logique et
+physique, diagrammes UML, organisation des microservices et principaux scénarios
+d’interaction.
+xiii
+
+Introduction Générale
+• Lequatrième chapitredécrit la réalisation de la plateforme, les modules développés,
+les interfaces produites et les fonctionnalités livrées pour chaque profil utilisateur.
+• Lecinquième chapitreest consacré à la chaîne DevOps mise en place : intégration
+et déploiement continus, conteneurisation, qualité de code, tests de performance et
+supervision.
+Le rapport se conclut par un bilan général du travail réalisé, les difficultés rencontrées, les
+compétences acquises, ainsi que les perspectives d’évolution envisagées pour la plateforme
+WellnessHub.
+xiv
+
+1
+Cadre Général du Projet
+Introduction
+Ce chapitre situe le projetWellnessHubdans son contexte général. Il présente d’abord
+l’entreprise d’accueil, puis les enjeux qui ont motivé la réalisation de la plateforme. Il analyse
+ensuite les solutions existantes afin d’en dégager les limites, avant d’introduire la solution
+proposée et ses principaux apports.
+1.1 Présentation de l’Entreprise d’Accueil
+1.1.1 Historique
+WellnessHubestunestartuptunisiennefondéeen2023parMonsieurYoussefBoussaada.Elle
+développe des solutions numériques dédiées au bien-être en entreprise, avec pour objectif
+d’aider les organisations à améliorer la qualité de vie au travail à travers une plateforme
+centralisant les services liés au bien-être physique, mental et professionnel.
+Depuis sa création, WellnessHub s’est orientée vers le développement d’une plateforme
+SaaS permettant de connecter les entreprises, les employés et les experts du bien-être au
+sein d’un environnement unique. La solution facilite la gestion des programmes de bien-
+être, la réservation de consultations, le suivi des indicateurs de performance ainsi que
+l’accompagnement personnalisé des collaborateurs.
+Dans une logique d’innovation continue, l’entreprise intègre l’intelligence artificielle pour
+l’assistance conversationnelle, les recommandations personnalisées et l’automatisation de
+certains traitements. Cette orientation permet de proposer une solution évolutive, adaptée aux
+entreprisesquisouhaitentrenforceràlafoislebien-êtreetl’engagementdeleurscollaborateurs.
+1
+
+Chapitre 1. Cadre Général du Projet
+Figure 1.1: Logo de l’entreprise d’accueil
+1.1.2 Activités et Domaine d’Activité
+L’entreprise opère principalement dans les domaines suivants :
+•Développement de plateformes SaaS (Software as a Service);
+•Conseil et accompagnement en transformation digitale des entreprises;
+•Intégration de solutions d’intelligence artificielle dans des produits métier;
+•Développement d’applications web et mobiles sur mesure.
+WellnessHub s’appuie sur une équipe réunissant des compétences en santé numérique,
+développementlogicieletmarketing.Cettecomplémentaritéfacilitelaconceptiondesolutions
+à la fois utiles pour les entreprises et accessibles aux collaborateurs. L’organigramme est
+présenté dans la Figure 1.2.
+Figure 1.2: Organigramme de WellnessHub
+2
+
+Chapitre 1. Cadre Général du Projet
+1.1.3 Missions
+L’entreprise s’engage à :
+•Fournir des solutions technologiques innovantes et fiables à ses clients;
+•Accompagner la transformation digitale des organisations partenaires;
+• Placer l’humain au centre de ses produits, en particulier dans le domaine du bien-être
+en entreprise.
+1.1.4 Vision
+Devenir un acteur de référence dans la conception de solutions numériques centrées sur
+l’humain, en combinant expertise technique et innovation en intelligence artificielle.
+1.1.5 Valeurs
+• Centré sur l’humain— placer le bien-être et les besoins des utilisateurs au cœur de la
+conception de chaque solution proposée;
+• Confiance et confidentialité— garantir la protection des données personnelles grâce à
+des mécanismes de sécurité conformes aux exigences des entreprises;
+• Impact mesurable— favoriser une approche basée sur des indicateurs et des analyses
+permettant d’évaluer concrètement l’efficacité des programmes de bien-être;
+•Innovation— développer continuellement de nouvelles fonctionnalités et intégrer les
+technologies émergentes afin d’améliorer l’expérience des utilisateurs.
+1.2 Contexte du Projet
+1.2.1 Contexte
+Au cours des dernières années, le bien-être au travail est devenu un enjeu stratégique pour
+les entreprises. Il contribue à améliorer la qualité de vie des collaborateurs, à renforcer
+leur engagement et à favoriser leur performance. Face à cette évolution, de nombreuses
+organisations investissent dans des programmes de bien-être faisant appel à des experts
+spécialisés tels que des psychologues, des coachs sportifs ou des nutritionnistes.
+Parallèlement, la transformation numérique des entreprises a fait émerger de nouvelles
+plateformes permettant de faciliter l’accès à ces services. Cependant, les solutions existantes
+répondentgénéralementàdesbesoinsspécifiquesetneproposentpasunenvironnementunifié
+couvrant l’ensemble des acteurs impliqués dans la gestion du bien-être en entreprise.
+3
+
+Chapitre 1. Cadre Général du Projet
+1.2.2 Problématique
+Malgré l’évolution des solutions numériques, plusieurs difficultés persistent :
+• les entreprises rencontrent des difficultés pour gérer leurs programmes de bien-être à
+partir d’une plateforme unique;
+• les responsables RH disposent de peu d’outils permettant de suivre efficacement les
+budgets, les réservations et l’engagement des collaborateurs;
+• les employés ont des difficultés à identifier rapidement les experts correspondant à leurs
+besoins et à bénéficier d’un accompagnement personnalisé;
+• les experts disposent de peu d’outils pour gérer leurs disponibilités, leurs consultations
+et la validation de leurs certifications;
+• lesplateformesexistantesexploitentencorepeulestechnologiesd’intelligenceartificielle
+afin de personnaliser l’expérience utilisateur et d’automatiser certaines tâches.
+1.2.3 Objectifs du Projet
+Afin de répondre à ces problématiques, le projet WellnessHub poursuit les objectifs suivants :
+1. développer une plateforme SaaS multi-tenant dédiée au bien-être en entreprise;
+2. centraliser la gestion des entreprises, des employés, des responsables RH et des experts
+au sein d’une seule solution;
+3. faciliter la réservation des consultations, la gestion des disponibilités et le suivi des
+sessions;
+4. intégrer un chatbot intelligent capable d’accompagner les utilisateurs et de répondre à
+leurs questions;
+5. automatiser la vérification des certifications des experts grâce à un système OCR assisté
+par l’intelligence artificielle;
+6. générer des parcours de bien-être personnalisés (Wellness Journey) adaptés au profil de
+chaque employé;
+7. fournir des tableaux de bord permettant de suivre les budgets, les revenus, les sessions
+et les principaux indicateurs;
+8. mettre en œuvre une architecture microservices accompagnée d’une chaîne DevOps
+garantissant la qualité, la performance et le déploiement continu de la plateforme.
+4
+
+Chapitre 1. Cadre Général du Projet
+1.3 Étude de l’Existant
+1.3.1 Analyse des solutions existantes
+Avant de concevoir WellnessHub, une étude des principales plateformes de bien-être en
+entreprise a été réalisée afin d’identifier les solutions déjà présentes sur le marché ainsi que
+leurs caractéristiques.
+À l’échelle nationale, la plateformeAhkiliest spécialisée dans l’accompagne-
+ment psychologique à distance. Elle propose des téléconsultations avec des
+psychologues ainsi qu’un suivi de l’état émotionnel des utilisateurs.
+Au Maroc,Veezenmet à disposition une solution destinée aux entreprises.
+Elleintègredesfonctionnalitésd’intelligenceartificielleainsiquedestableaux
+de bord permettant aux responsables RH de suivre différents indicateurs liés
+au bien-être des collaborateurs.
+Toujours au Maroc,Wellpassadopte une approche principalement orientée
+vers le sport et le bien-être physique. La plateforme donne accès à un réseau
+de salles de sport et de partenaires spécialisés.
+En France,Moka.careaccompagne les entreprises à travers des consultations
+psychologiques, des ressources numériques et des programmes de prévention
+consacrés à la santé mentale.
+Enfin,Wellhub, anciennement Gympass, constitue l’une des références
+internationalesdusecteur.Laplateformeproposeunvasteréseaudepartenaires
+couvrant plusieurs domaines tels que le sport, la nutrition, le bien-être mental
+et les activités de remise en forme.
+Cette étude a permis d’identifier les principales fonctionnalités proposées par les solutions
+existantes et de mettre en évidence leurs points forts ainsi que leurs limites.
+1.3.2 Analyse comparative et limites des solutions existantes
+L’analysemontrequechaqueplateformerépondàunepartiedubesoin,sanscouvrirl’ensemble
+des attentes des organisations.
+Certaines plateformes se concentrent principalement sur les consultations psychologiques,
+tandis que d’autres privilégient les activités sportives, les programmes de coaching ou encore
+le suivi analytique destiné aux responsables RH. Bien que plusieurs solutions intègrent des
+fonctionnalités innovantes, elles restent généralement spécialisées dans un domaine précis.
+Plusieurs limites reviennent cependant de manière récurrente : peu de solutions combinent
+l’évaluation intelligente du bien-être, l’accompagnement personnalisé, un réseau d’experts
+certifiés, le pilotage RH et la gestion centralisée des entreprises.
+Ces constats ont orienté le développement deWellnessHub. La plateforme regroupe les
+services de gestion des séances, des experts et des entreprises, tout en intégrant un chatbot
+intelligent,unevalidationOCRdescertifications,unparcourspersonnalisé(WellnessJourney)
+et des tableaux de bord de pilotage.
+5
+
+Chapitre 1. Cadre Général du Projet
+1.4 Étude Concurrentielle
+À partir de l’étude des solutions existantes, une analyse comparative a été réalisée afin
+d’identifier les principales fonctionnalités proposées par les plateformes de bien-être en
+entreprise. Le Tableau 1.1 compare WellnessHub avec cinq solutions représentatives du
+marché :Ahkili,Veezen,Wellpass,Moka.careetWellhub.
+Table 1.1: Analyse comparative des principales plateformes de bien-être en entreprise
+Critère Ahkili VeezenWellpassMoka.careWellhubWellnessHub
+Téléconsultation Oui Oui Non Oui Partiel Oui
+Réseau d’experts certifiés Oui Oui Partiel Oui Oui Oui
+Réservation de séances Oui Oui Oui Oui Oui Oui
+Tableau de bord RH Non Oui Non Partiel Oui Oui
+Intelligence artificielle Non Oui Non Non Partiel Oui
+Évaluation personnalisée du bien-êtreOui Oui Non Oui Partiel Oui
+Chatbot IA intégré Non Non Non Non Non Oui
+Validation des certifications par OCRNon Non Non Non Non Oui
+Wellness Journey personnalisé Non Non Non Non Non Oui
+Gestion multi-entreprises SaaS Non Oui Non Oui Oui Oui
+Analyse —Les solutions étudiées couvrent des besoins complémentaires. Ahkili et
+Moka.care sont principalement centrées sur l’accompagnement psychologique, Wellpass
+privilégie l’accès aux activités sportives, tandis que Veezen et Wellhub proposent des
+fonctionnalités plus larges à destination des entreprises.
+Cependant, aucune des plateformes analysées ne réunit simultanément l’évaluation intelli-
+gentedubien-être,lechatbotIA,lavalidationOCRdescertifications,leparcourspersonnalisé,
+le réseau d’experts certifiés et le tableau de bord RH.
+WellnessHub se distingue ainsi par une approche intégrée. Elle centralise la gestion des
+programmes de bien-être au sein d’une plateforme SaaS multi-tenant, tout en proposant une
+expérience adaptée aux employés, aux responsables RH, aux experts et aux administrateurs.
+1.5 Solution Proposée : WellnessHub
+Pourrépondreauxlimitesobservées,WellnessHubproposeuneplateformeSaaSmulti-tenant
+dédiée au bien-être en entreprise. Elle met en relation quatre profils : l’Administrateur, qui
+supervise la plateforme; leResponsable RH, qui suit les collaborateurs, les budgets et les
+indicateurs; l’Employé, bénéficiaire des services; et l’Expert, chargé d’animer les sessions
+et d’accompagner les parcours.
+La plateforme centralise les entreprises, les réservations, les portefeuilles, les certifications,
+la messagerie et les tableaux de bord. Elle enrichit cette base fonctionnelle par un chatbot, une
+6
+
+Chapitre 1. Cadre Général du Projet
+validation automatique des certifications par OCR et un module de génération de parcours
+personnalisés (Wellness Journey).
+Sur le plan technique, la solution repose sur une architecture microservices accompagnée
+d’une infrastructure DevOps assurant l’automatisation du déploiement, la supervision et la
+montéeenchargedelaplateforme.Cettearchitecturegarantitunemeilleuremodularité,facilite
+l’évolution des différents services et assure une isolation des données entre les entreprises
+clientes.
+Conclusion
+Ce premier chapitre a présenté le contexte du projet, l’entreprise d’accueil et les limites des
+solutions existantes. Cette analyse justifie la mise en place deWellnessHub, une plateforme
+SaaS qui associe gestion du bien-être, intelligence artificielle, validation OCR, parcours
+personnaliséetarchitecturemicroservices.Lechapitresuivantpréciselesbesoinsfonctionnels
+et non fonctionnels ainsi que la méthodologie retenue.
+7
+
+2
+Analyse des Besoins et Méthodologie
+Introduction
+Ce chapitre présente l’analyse des besoins fonctionnels et non fonctionnels de la plateforme
+WellnessHub, la méthodologie de gestion de projet adoptée pour son développement, ainsi
+que les technologies retenues pour son implémentation.
+2.1 Identification des Acteurs
+Les acteurs représentent les utilisateurs et composants externes qui interagissent avec la
+plateforme WellnessHub. Leur identification permet de clarifier le périmètre fonctionnel avant
+la définition détaillée des besoins.
+8
+
+Chapitre 2. Analyse des Besoins et Méthodologie
+Table 2.1: Acteurs de la plateforme WellnessHub
+Acteur Description
+Visiteur Utilisateur non authentifié qui consulte les pages publiques,
+découvre les offres, soumet une demande de contact ou
+s’inscrit sur la plateforme.
+Employé Employé d’une entreprise cliente qui utilise WellnessHub
+pourréalisersonévaluationdebien-être,suivresonparcours
+personnalisé et réserver des sessions.
+RH Responsabledesressourceshumainesd’uneentreprisecliente
+chargé de gérer les employés, les budgets de bien-être, le
+suivi des programmes et les rapports RH.
+Expert Professionnel du bien-être qui propose des sessions, soumet
+ses certifications, gère ses disponibilités et suit ses partici-
+pants ainsi que ses gains.
+Admin Administrateur de la plateforme qui supervise les entreprises
+clientes, les experts, les certifications, les contenus publics,
+les campagnes et les indicateurs globaux.
+Chatbot Acteur système chargé d’assister automatiquement les utili-
+sateurs, de répondre aux questions fréquentes et d’escalader
+les demandes non résolues.
+2.2 Analyse des Besoins
+2.2.1 Besoins Fonctionnels
+Les besoins fonctionnels sont présentés par domaine de gestion afin de mieux structurer
+les fonctionnalités offertes par la plateforme WellnessHub. Chaque domaine regroupe les
+actions nécessaires au fonctionnement métier du système et reste relié aux acteurs identifiés
+précédemment.
+Gestion des comptes et de l’authentification
+•Permettre l’inscription des visiteurs en tant qu’Employé, Expert ou RH;
+•Assurer l’authentification sécurisée des utilisateurs;
+•Vérifier l’identité des utilisateurs lors de l’inscription via OTP;
+•Gérer les profils utilisateurs et les droits d’accès selon le type d’acteur;
+•Permettre la consultation et la mise à jour des informations de profil.
+9
+
+Chapitre 2. Analyse des Besoins et Méthodologie
+Gestion des entreprises et des employés
+•Gérer les entreprises clientes (activation, blocage, budgets);
+•Gérer les comptes employés rattachés à une entreprise;
+•Allouer un budget de bien-être à chaque employé;
+•Consulter le budget entreprise restant et son historique;
+•Superviser le programme de bien-être (parcours des employés);
+•Consulter les retours (feedbacks) des employés.
+Gestion des experts et des certifications
+• Permettre aux experts de s’inscrire et de soumettre leurs certifications professionnelles;
+•Valider ou refuser les certifications des experts;
+•Gérer les experts (validation, bannissement, paiements);
+•Permettre aux experts de gérer leurs disponibilités;
+•Permettre aux experts de consulter les retours reçus et leur tableau de bord financier;
+•Permettre aux experts de consulter leur portefeuille et leurs gains (earnings).
+Gestion du bien-être et du parcours personnalisé
+• Permettre aux employés de compléter une évaluation initiale de bien-être (Wellness
+Assessment);
+•Générer un parcours de bien-être personnalisé à l’aide de l’IA;
+•Permettre aux employés de suivre leur progression dans le parcours proposé;
+•Gérer les badges et le portefeuille de jetons (wallet) des employés;
+•Collecter les retours des employés après les activités réalisées.
+Gestion des sessions et des réservations
+•Permettre aux experts de créer et gérer des sessions de bien-être;
+• Permettre aux employés d’explorer et de réserver des sessions animées par des experts;
+•Gérer les participants et la liste d’attente des sessions;
+• Permettreauxemployésderejoindreunelisted’attentelorsqu’unesessionestcomplète;
+•Permettre aux employés de consulter l’historique de leurs réservations (My Sessions);
+•Permettre aux experts de valider la présence des participants après chaque session.
+10
+
+Chapitre 2. Analyse des Besoins et Méthodologie
+Gestion de la communication et des notifications
+• Permettre aux employés, aux experts et aux RH de communiquer via la messagerie
+intégrée;
+•Envoyer des notifications liées aux réservations, aux sessions et aux échanges;
+•Répondre automatiquement aux questions fréquentes via le chatbot;
+•Recourir à un modèle de langage (OpenAI) en cas d’absence de correspondance;
+•Journaliser les questions non résolues pour curation par l’Admin.
+Gestion du contenu public et du marketing
+• Permettreauxvisiteursdeconsulterlespagespubliques(landingpage,offresparprofil);
+•Gérer les partenaires affichés sur la landing page;
+•Gérer les campagnes de newsletter et de mailing;
+•Permettre aux visiteurs de s’abonner à la newsletter;
+• Permettre aux visiteurs de soumettre une demande de contact ou de démonstration
+(Book Demo).
+Gestion du reporting et de l’administration
+•Consulter des analytics globales et multi-tenant;
+•Consulter des analytics RH (bien-être, participation, absentéisme);
+•Générer des rapports exportables (Excel);
+•Permettre aux RH de consulter les employés et les tokens dépensés par chacun;
+•Consulter l’historique des sessions de chaque employé;
+•Consulter l’historique des transactions liées aux budgets et aux réservations;
+•Superviser les indicateurs métier et techniques de la plateforme.
+2.2.2 Besoins Non Fonctionnels
+• Sécurité—authentificationparJSONWebToken(JWT)propreàchaquemicroservice,
+vérificationOTPàl’inscription,clédeservice( SERVICE_API_KEY)pourlesappelsinter-
+services,chiffrementHyperTextTransferProtocolSecure(HTTPS)descommunications
+inter-serveurs;
+11
+
+Chapitre 2. Analyse des Besoins et Méthodologie
+• Disponibilité— health checks Docker sur chaque service, redémarrage automatique
+(restart: unless-stopped ), architecture résiliente aux pannes partielles (dégrada-
+tion gracieuse du tableau de bord multi-tenant);
+• Performance— temps de réponse cible (P95<500 ms) validé par tests de charge outil
+de test de charge (Grafana k6) (k6);
+• Évolutivité— architecture microservices permettant l’ajout de nouvelles entreprises
+clientes (nouveaux serveurs tenant) sans modification du code existant;
+• Maintenabilité— séparation claire des responsabilités par service, couverture de tests
+mesurée par Java Code Coverage — outil de mesure de couverture de tests (JaCoCo),
+qualitédecodecontrôléeparoutild’analysestatiquedelaqualitéducode(SonarQube);
+• Supervision (Monitoring)— collecte de métriques par Prometheus, tableaux de bord
+Grafana en temps réel;
+• Intégration et Déploiement Continus— pipeline Jenkins automatisant build, tests,
+analyse qualité, construction d’images Docker et déploiement.
+2.3 Méthodologie de Gestion de Projet : SCRUM
+Le développement deWellnessHuba été conduit selon la méthodologie agileSCRUM. Cette
+approche a permis d’organiser le projet en plusieurs sprints, de prioriser les fonctionnalités
+selon leur valeur métier et de livrer progressivement des versions fonctionnelles tout en
+s’adaptant aux besoins de l’entreprise.
+Figure 2.1: Cycle de vie de la méthodologie agile SCRUM
+La Figure 2.1 illustre les principales étapes du cycle SCRUM. Chaque sprint débute par la
+planificationdesbesoins,suiviedudéveloppementetdesréunionsquotidiennes(DailyScrum),
+12
+
+Chapitre 2. Analyse des Besoins et Méthodologie
+puis se termine par une revue (Sprint Review) et une rétrospective (Sprint Retrospective) avant
+de démarrer l’itération suivante.
+2.3.1 Rôles SCRUM
+Le projet s’appuie sur les principaux rôles définis par SCRUM :
+• Product Owner: définit les besoins métier, priorise le backlog et valide les fonctionna-
+lités développées;
+•Scrum Master: accompagne l’équipe et veille au bon déroulement des sprints;
+• Équipe de développement: conçoit, développe, teste et intègre les différentes fonction-
+nalités de la plateforme.
+2.3.2 Product Backlog
+LeProductBacklogregroupel’ensembledesbesoinsfonctionnelsidentifiéspourlaplateforme
+WellnessHub. Les fonctionnalités sont décrites sous forme deUser Stories, puis priorisées et
+réparties sur plusieurs sprints afin d’organiser le développement de manière progressive.
+Le Tableau 2.2 présente le backlog synthétique du projet.
+Table 2.2: Product Backlog synthétique de la plateforme WellnessHub
+ID User Story Acteur Priorité Sprint
+Module : Portail public et acquisition
+US-01 Entantquevisiteur,jesouhaiteconsulterlespages
+publiques de WellnessHub afin de comprendre
+l’offre,lesprofilsciblésetlesmodalitésd’adhésion.
+Visiteur Haute Sprint 1
+US-02 En tant que visiteur, je souhaite contacter Wellnes-
+sHub, réserver une démonstration ou m’abonner
+à la newsletter afin d’entrer en relation avec la
+plateforme.
+Visiteur Moyenne Sprint 2
+Module : Authentification et gestion des comptes
+US-03 En tant qu’utilisateur, je souhaite créer un compte
+selonmonrôleavecvérificationOTPafind’accéder
+de manière sécurisée à la plateforme.
+Utilisateur Haute Sprint 1
+US-04 En tant qu’utilisateur, je souhaite me connecter,
+me déconnecter et réinitialiser mon mot de passe
+afin de gérer mon accès à mon espace personnel.
+Utilisateur Haute Sprint 1
+US-05 En tant qu’utilisateur authentifié, je souhaite gérer
+mon profil, ma photo et mes préférences afin de
+personnaliser mon expérience.
+Utilisateur Moyenne Sprint 3
+13
+
+Chapitre 2. Analyse des Besoins et Méthodologie
+Table 2.2: Product Backlog synthétique de la plateforme WellnessHub (suite)
+ID User Story Acteur Priorité Sprint
+Module : Administration de la plateforme
+US-06 En tant qu’administrateur, je souhaite consulter un
+tableau de bord global afin de superviser les indi-
+cateurs, les instances et la santé de la plateforme.
+Admin Haute Sprint 2
+US-07 En tant qu’administrateur, je souhaite gérer les
+entreprises, leurs budgets et leurs transactions afin
+d’administrer le modèle multi-tenant.
+Admin Haute Sprint 2
+US-08 En tant qu’administrateur, je souhaite gérer les
+comptes administrateurs et le personnel RH afin
+de contrôler les accès de gestion.
+Admin Haute Sprint 3
+US-09 En tant qu’administrateur, je souhaite superviser
+les experts, leurs certifications, leurs sanctions et
+leurspaiementsafindegarantirlaqualitéduréseau.
+Admin Haute Sprint 4
+US-10 En tant qu’administrateur, je souhaite gérer le ca-
+talogue des types de sessions afin de structurer
+l’offre de bien-être.
+Admin Moyenne Sprint 4
+US-11 En tant qu’administrateur, je souhaite gérer les de-
+mandescommerciales,lespartenaires,lesabonnés
+et les campagnes mailing afin d’animer le volet
+marketing.
+Admin Moyenne Sprint 5
+US-12 En tant qu’administrateur, je souhaite consulter les
+journaux d’audit et le grand livre financier afin
+d’assurer la traçabilité des opérations sensibles.
+Admin Moyenne Sprint 5
+Module : Ressources Humaines
+US-13 En tant que RH, je souhaite consulter un tableau
+de bord de synthèse afin de suivre les indicateurs
+de bien-être de mon entreprise.
+RH Haute Sprint 3
+US-14 En tant que RH, je souhaite gérer les employés,
+leurs détails et leurs allocations de jetons afin de
+piloter le budget bien-être.
+RH Haute Sprint 3
+US-15 En tant que RH, je souhaite analyser la participa-
+tion,l’assiduitéetlaprogressiondesemployésafin
+d’évaluer l’engagement collectif.
+RH Moyenne Sprint 4
+US-16 En tant que RH, je souhaite générer et télécharger
+des rapports Excel afin de disposer d’indicateurs
+exploitables pour le suivi interne.
+RH Moyenne Sprint 5
+Module : Parcours employé et bien-être
+14
+
+Chapitre 2. Analyse des Besoins et Méthodologie
+Table 2.2: Product Backlog synthétique de la plateforme WellnessHub (suite)
+ID User Story Acteur Priorité Sprint
+US-17 En tant qu’employé, je souhaite consulter mon
+tableau de bord personnel afin de suivre mon bien-
+être, mon portefeuille, mes badges et ma progres-
+sion.
+Employé Haute Sprint 3
+US-18 En tant qu’employé, je souhaite renseigner mon
+bien-êtrequotidienetconsultermonhistoriqueafin
+de suivre mon évolution.
+Employé Haute Sprint 3
+US-19 En tant qu’employé, je souhaite compléter une
+évaluation initiale et suivre unWellness Journey
+personnalisé afin d’améliorer mon bien-être.
+Employé Haute Sprint 4
+US-20 Entantqu’employé,jesouhaiteexploreretréserver
+des sessions de bien-être afin de participer aux
+activités proposées par les experts.
+Employé Haute Sprint 4
+US-21 En tant qu’employé, je souhaite gérer mes réserva-
+tions, invitations, annulations et feedbacks afin de
+contrôler mon parcours de participation.
+Employé Moyenne Sprint 5
+Module : Experts et certifications
+US-22 En tant qu’expert, je souhaite soumettre et suivre
+mescertificationsavecassistanceOCRafindefaire
+valider mon profil professionnel.
+Expert Haute Sprint 4
+US-23 Entantqu’expert,jesouhaitegérermonprofil,mes
+langues, mes disponibilités et ma tarification afin
+de configurer mon offre de services.
+Expert Haute Sprint 4
+US-24 En tant qu’expert, je souhaite créer, planifier, mo-
+difier et annuler mes sessions afin de proposer des
+activités aux entreprises clientes.
+Expert Haute Sprint 4
+US-25 Entantqu’expert,jesouhaitegérerlesparticipants,
+les invitations, la liste d’attente et la présence afin
+d’assurer le suivi opérationnel des sessions.
+Expert Haute Sprint 5
+US-26 En tant qu’expert, je souhaite consulter mes feed-
+backs,mesanalytics,monportefeuilleetmesgains
+afindesuivremaperformanceetmarémunération.
+Expert Moyenne Sprint 5
+Module : Intelligence artificielle et automatisation
+US-27 En tant que système, je souhaite analyser les certi-
+fications par OCR et classification afin d’assister
+la validation des experts.
+Système IA Haute Sprint 4
+US-28 En tant que système, je souhaite générer des par-
+cours de bien-être personnalisés et recommander
+des sessions afin d’adapter l’expérience employé.
+Système IA Haute Sprint 4
+15
+
+Chapitre 2. Analyse des Besoins et Méthodologie
+Table 2.2: Product Backlog synthétique de la plateforme WellnessHub (suite)
+ID User Story Acteur Priorité Sprint
+US-29 En tant que chatbot, je souhaite répondre automa-
+tiquement aux questions fréquentes et journaliser
+les demandes non résolues afin d’améliorer l’assis-
+tance.
+Chatbot Moyenne Sprint 6
+Module : Communication et notifications
+US-30 Entantqu’utilisateurauthentifié,jesouhaiteéchan-
+ger via une messagerie temps réel avec conversa-
+tions, messages, pièces jointes et indicateurs de
+lecture afin de centraliser la communication.
+Utilisateur Haute Sprint 6
+US-31 En tant qu’utilisateur authentifié, je souhaite rece-
+voirdesnotificationsliéesauxsessions,invitations,
+messages et actions importantes afin de rester in-
+formé.
+Utilisateur Haute Sprint 6
+Module : Reporting, supervision et traçabilité
+US-32 En tant que système, je souhaite enregistrer les
+visitesdusitepublicafind’alimenterlesstatistiques
+d’usage.
+Système Faible Sprint 6
+US-33 En tant qu’administrateur, je souhaite suivre la
+disponibilité et les métriques des microservices
+afindesuperviserl’étattechniquedelaplateforme.
+Admin Moyenne Sprint 6
+Le Product Backlog est organisé par grands modules fonctionnels afin de faciliter la
+planification des développements et le suivi des livraisons. Les premières itérations sont
+consacréesauxfonctionnalitésessentielles,notammentl’authentification,l’administrationetla
+gestion des utilisateurs. Les modules métier, les fonctionnalités d’intelligence artificielle ainsi
+que la communication temps réel sont ensuite intégrés progressivement au cours des sprints
+suivants. Cette organisation a permis de livrer des incréments cohérents tout en respectant les
+priorités métier du projet.
+2.3.3 Organisation Agile – Planning des Sprints avec Jira
+Laplanificationdessprintsaétéréaliséeàl’aidedeJira.Chaquesprintregroupeunensemble
+de fonctionnalités à développer et permet de suivre l’évolution globale du projet.
+16
+
+Chapitre 2. Analyse des Besoins et Méthodologie
+Figure 2.2: Organisation des sprints dans Jira
+Laplanificationdessprintsfacilitelarépartitiondestâchesetpermetd’assurerunelivraison
+progressive des différentes fonctionnalités.
+2.3.4 Organisation Agile – Tableau Jira
+Le tableau Jira est utilisé quotidiennement pour suivre l’avancement des tâches. LesUser
+Storiesévoluent entre les différentes colonnes selon leur état (To Do,In Progress,Done),
+offrant une vision claire de la progression du projet.
+Figure 2.3: Tableau Jira utilisé pour le suivi des tâches
+Cette organisation améliore la visibilité sur les fonctionnalités développées et facilite le
+suivi des différents sprints.
+17
+
+Chapitre 2. Analyse des Besoins et Méthodologie
+2.3.5 Diagramme de Gantt
+En complément de l’approche agile, un diagramme de Gantt a été élaboré afin de présenter la
+planification globale du projet et les principales phases de développement.
+Figure 2.4: Diagramme de Gantt du projet WellnessHub
+Lediagrammemetenévidencelesprincipalesétapesduprojet,depuisl’analysedesbesoins
+jusqu’au déploiement final.
+2.3.6 Gestion du Code Source avec GitHub
+Le code source de WellnessHub est versionné sur GitHub à travers deux dépôts distincts : l’un
+dédié au backend et l’autre au frontend. Cette organisation facilite le suivi des évolutions, la
+collaboration et l’intégration continue.
+(a) Repository Backend
+ (b) Repository Frontend
+Figure 2.5: Gestion du code source de WellnessHub sur GitHub
+Les dépôts GitHub assurent la traçabilité des modifications et servent de source aux
+pipelines Jenkins pour les phases d’intégration et de déploiement.
+18
+
+Chapitre 2. Analyse des Besoins et Méthodologie
+2.3.7 Synthèse
+L’adoptiondeSCRUM,associéeàJira,GitHubetaudiagrammedeGantt,apermisd’organiser
+efficacement le développement de WellnessHub. Cette méthodologie a facilité la planification,
+le suivi des tâches et la livraison progressive des fonctionnalités tout au long du projet.
+2.4 Choix Technologiques
+Cette section présente les principales technologies utilisées pour développer WellnessHub.
+Elles couvrent le développement des interfaces, les microservices, l’intelligence artificielle, la
+gestion des données ainsi que l’environnement DevOps mis en place pour automatiser les
+déploiements et superviser la plateforme.
+2.4.1 Développement Frontend
+React
+Description:BibliothèqueJavaScriptutiliséepourdévelopperlesinterfaces
+de la plateforme.
+Pourquoi ce choix :Architecture par composants, interface dynamique et
+excellente intégration avec les API REST.
+2.4.2 Backend et Microservices
+Spring Boot
+Description :Framework Java utilisé pour développer l’ensemble des
+microservices métier.
+Pourquoi ce choix :Développement rapide, intégration native avec Spring
+Cloud et bonne adaptation aux architectures distribuées.
+2.4.3 Intelligence Artificielle
+Python
+Description :Langage utilisé pour le développement du microservice IA.
+Pourquoi ce choix :Écosystème riche pour le traitement d’image, l’OCR
+et l’intelligence artificielle.
+FastAPI
+Description :Framework Python utilisé pour exposer les services IA.
+Pourquoi ce choix :API REST performantes, validation automatique et
+documentation OpenAPI intégrée.
+19
+
+Chapitre 2. Analyse des Besoins et Méthodologie
+OpenAI API
+Description :Utilisée pour le chatbot intelligent, les embeddings et la
+génération du Wellness Journey.
+Pourquoi ce choix :Production de réponses contextuelles et recommanda-
+tions personnalisées.
+2.4.4 Gestion des données
+PostgreSQL
+Description :Base de données relationnelle utilisée par les microservices.
+Pourquoi ce choix :Fiabilité, performances et bonne prise en charge des
+architectures multi-services.
+RabbitMQ
+Description :Broker de messages utilisé pour les échanges asynchrones.
+Pourquoi ce choix :Découplage des services et meilleure gestion des
+traitements en arrière-plan.
+2.4.5 Gestion du code source
+GitHub
+Description :Plateforme de gestion du code source utilisée pour héberger
+les projets frontend et backend.
+Pourquoi ce choix :Versionnement, collaboration, suivi des évolutions et
+intégration avec Jenkins.
+2.4.6 DevOps
+Docker
+Description :Conteneurisation des microservices.
+Pourquoi ce choix :Déploiement identique sur tous les environnements.
+Docker Compose
+Description :Orchestration des conteneurs Docker.
+Pourquoi ce choix :Gestion simplifiée de toute la plateforme via un seul
+fichier de configuration.
+20
+
+Chapitre 2. Analyse des Besoins et Méthodologie
+Jenkins
+Description :Serveur d’intégration et de déploiement continus.
+Pourquoi ce choix :Automatisation des builds, des tests et des déploie-
+ments.
+SonarQube
+Description :Plateforme d’analyse de qualité du code.
+Pourquoi ce choix :Détection des bugs, vulnérabilités et dette technique.
+Prometheus
+Description :Collecte des métriques des microservices.
+Pourquoicechoix:Suivientempsréeldesperformancesdelaplateforme.
+Grafana
+Description :Visualisation des métriques collectées.
+Pourquoi ce choix :Création de tableaux de bord pour le monitoring.
+k6
+Description :Outil de tests de performance.
+Pourquoicechoix:Validationdelachargesupportéeparlesmicroservices.
+Vercel
+Description :Plateforme de déploiement du frontend React.
+Pourquoicechoix:Publicationrapideetgestionautomatiquedesversions.
+Nginx
+Description :Serveur Web utilisé comme reverse proxy.
+Pourquoi ce choix :Distribution des requêtes vers les microservices et
+exposition sécurisée des services.
+2.4.7 Justification synthétique des choix
+Les technologies retenues répondent aux besoins fonctionnels et techniques de WellnessHub :
+• Reacta été choisi pour développer des interfaces dynamiques, réutilisables et adaptées
+aux différents profils de la plateforme;
+• Spring Boot et Spring Cloudfacilitent la création des microservices, leur découverte
+avec Eureka et le routage centralisé via l’API Gateway;
+21
+
+Chapitre 2. Analyse des Besoins et Méthodologie
+• PostgreSQLassure une persistance fiable des données et permet de séparer les bases
+selon les domaines fonctionnels;
+• Python et FastAPIsont utilisés pour le microservice d’intelligence artificielle grâce à
+leur intégration simple avec Tesseract OCR, OpenCV et les traitements de documents;
+• RabbitMQpermet de préparer des échanges asynchrones et de réduire le couplage
+entre les services;
+• GitHubcentralise le code source, conserve l’historique des modifications et alimente
+les pipelines Jenkins;
+• Docker et Docker Composegarantissent des environnements reproductibles et simpli-
+fient le déploiement de l’ensemble des services;
+• Jenkins et SonarQubeautomatisent les builds, les tests, l’analyse de qualité et le
+déploiement continu;
+• Prometheus, Grafana et k6assurent respectivement la collecte des métriques, leur
+visualisation et la validation des performances;
+• Vercelpermet de déployer séparément le frontend React/Vite, tandis queNginxfacilite
+l’exposition et le routage des services.
+Conclusion
+Ce chapitre a établi la cartographie des besoins, la méthodologie de travail et les choix
+technologiques retenus pour WellnessHub. Le chapitre suivant présente la conception de la
+solution, avant la réalisation puis la mise en place DevOps.
+22
+
+3
+Conception
+Introduction
+Ce chapitre présente la conception de WellnessHub avant son implémentation. Il transforme
+les besoins recensés précédemment en une organisation fonctionnelle, applicative et technique
+cohérente. Il ne décrit donc pas le code source ni les écrans réalisés, mais les choix de
+modélisation qui ont guidé la construction de la solution.
+La démarche retenue suit une logique d’ingénierie progressive. Elle part d’une synthèse
+des besoins à couvrir, définit ensuite l’architecture générale et l’architecture logique, puis
+formalise la solution au moyen de diagrammes UML globaux. Le chapitre se termine par
+la conception de la base de données et par les principales maquettes Figma prévues pour
+guider l’expérience utilisateur. Les éléments présentés ici constituent ainsi le référentiel de
+conception sur lequel s’appuie le Chapitre 4, consacré à l’implémentation.
+3.1 Architecture générale
+L’architecturegénéraledeWellnessHubreposesuruneséparationentrelesinterfacesutilisateur,
+la couche d’exposition des API, les microservices métier et les services techniques. Les
+utilisateurs interagissent avec deux applications React : une application principale couvrant le
+site public et les espaces employé, RH et expert, puis une application BackOffice dédiée aux
+administrateurs. Toutes les requêtes applicatives transitent par une API Gateway, qui joue le
+rôle de point d’entrée unifié vers les services internes.
+23
+
+Chapitre 3. Conception
+Figure 3.1: Architecture générale de la plateforme WellnessHub
+La Figure 3.1 met en évidence la logique de découpage de la plateforme. Les acteurs
+externes ne communiquent pas directement avec les microservices : leurs requêtes passent par
+la passerelle, puis sont dirigées vers le service responsable du domaine concerné. Ce choix
+limitelecouplageentrelesinterfacesetlesservicesbackend,facilitel’évolutionindépendante
+des modules et rend possible l’ajout de nouvelles entreprises ou de nouveaux services sans
+modifier l’ensemble du système.
+Le registre Eureka complète cette architecture en assurant la découverte dynamique des
+services. Les microservices métier déclarent leur présence auprès du registre, tandis que
+la Gateway peut router les requêtes vers les instances disponibles. La persistance repose
+sur PostgreSQL, avec des schémas ou bases logiques séparés par service métier, et la
+communication temps réel s’appuie sur RabbitMQ et WebSocket pour les échanges liés à la
+messagerie.
+3.2 Architecture physique (déploiement)
+L’architecture physique de WellnessHub décrit l’organisation des composants logiciels sur
+l’infrastructure de déploiement. La plateforme adopte une architecture SaaS multi-tenant
+reposantsurunserveurcloudcentralmutualiséetdesserveursclouddédiésàchaqueentreprise
+cliente. Cette organisation permet de mutualiser les services communs tout en isolant les
+données et les applications propres à chaque entreprise.
+Le serveur central héberge les composants transverses de la plateforme, notamment
+Nginx, l’API Gateway , le registre de servicesEureka Server , les microservicesAdminMS,
+ExpertMS, ChatMSet AI-CERTIFICATION-MS,ainsiquelesbasesdedonnéesassociées.Les
+24
+
+Chapitre 3. Conception
+échanges asynchrones entre services sont assurés parRabbitMQ, tandis quePrometheus et
+Grafanapermettentlasupervisiondel’ensembledelaplateforme.Lesprocessusd’intégration
+et de déploiement continus sont automatisés grâce àJenkins, avec une gestion centralisée
+des images via le registre Docker.
+Chaqueentreprisedisposed’unserveurclouddédiécontenantsonproprefrontendReact,une
+instanceindépendantedumicroservice EntrepriseX MS etunebasededonnéesPostgreSQL.
+Cette séparation garantit l’isolation des données, facilite les montées en charge indépendantes
+et permet de personnaliser chaque environnement sans impacter les autres entreprises clientes.
+Touteslescommunicationsentrelesdifférentesinfrastructurestransitentpardesconnexions
+sécurisées en HTTPS. Les utilisateurs accèdent à la plateforme via le domaine public
+wellnesshub.com, tandis que chaque entreprise utilise un sous-domaine dédié du type
+nomEntreprise.wellnesshub.com. Les requêtes sont ensuite redirigées vers les microser-
+vices appropriés par l’API Gateway, assurant ainsi un point d’entrée unique et sécurisé.
+Figure 3.2: Architecture physique (déploiement) de la plateforme WellnessHub
+La Figure 3.2 illustre le modèle de déploiement de WellnessHub. Les services centraux
+sont mutualisés afin de réduire les coûts d’exploitation et de simplifier l’administration de
+la plateforme, tandis que chaque entreprise bénéficie d’une infrastructure applicative dédiée
+garantissant l’isolation des données, la sécurité et la scalabilité. Cette architecture répond
+aux exigences d’une plateforme SaaS multi-tenant en combinant mutualisation des services,
+indépendance des déploiements et haute évolutivité.
+25
+
+Chapitre 3. Conception
+3.3 Architecture logique
+L’architecture logique précise la responsabilité de chaque composant.AdminMs regroupe
+l’administrationcentrale:entreprisesclientes,experts,paiements,contenuspublics,newsletter,
+demandescommerciales,auditettableauxdebordconsolidés. EntrepriseXporteledomaine
+entreprise : comptes employés et RH, profils, budgets, portefeuilles, indicateurs, parcours
+bien-être, feedbacks et notifications internes.
+ExpertMs gère les experts, leurs certifications, leurs disponibilités, les sessions, les
+réservations et la rémunération.ChatMS isole la messagerie et les conversations temps
+réel. Enfin, AI-CERTIFICATION-MS intervient comme service spécialisé pour l’analyse
+automatique des certificats d’experts.
+Figure 3.3: Architecture logique de WellnessHub
+La Figure 3.3 montre que chaque domaine possède ses propres contrôleurs, services,
+repositoriesetentités.Untraitementliéauxsessionsouauxcertificationsrelèvede ExpertMs,
+tandisqu’untraitementliéaubudgetouauparcoursd’unemployérelèvede EntrepriseX.Les
+échanges interservices restent limités aux cas nécessaires, par exemple lorsqu’une réservation
+côté employé doit consulter les sessions exposées parExpertMs.
+Cedécoupageévitedeconstruireuneapplicationmonolithiqueoùtouslesmodèlesseraient
+partagés. Il accepte au contraire une duplication contrôlée de certaines notions, comme
+l’identité utilisateur ou les notifications, afin de préserver l’autonomie des services. Ce choix
+est important dans une architecture SaaS : il facilite les déploiements indépendants, la montée
+en charge ciblée et la maintenance par domaine fonctionnel.
+26
+
+Chapitre 3. Conception
+3.3.1 Architecture technique et échanges entre microservices
+Le module IA combine FastAPI, OCR, classification par règles pondérées, embeddings,
+appels OpenAI et persistance métier. Chaque service garde sa responsabilité : l’IA produit
+des résultats structurés, mais les décisions métier restent appliquées dans les microservices
+concernés.
+Figure 3.4: Architecture d’intégration des services IA
+Cettearchitecturemontreleséchangesentrefrontend, ExpertMs, AI-CERTIFICATION-MS,
+AdminMs,OpenAIet EntrepriseX.Ellesoulignequel’IAcomplètelesystèmesansremplacer
+les domaines métier.
+3.4 Diagrammes UML globaux
+Les diagrammes UML globaux ont pour objectif de donner une vision transversale de la
+solution. Ils ne décrivent pas le détail d’un module particulier; ce niveau de précision sera
+réservé au Chapitre 4. Dans ce chapitre de conception, les diagrammes retenus présentent
+respectivement le périmètre fonctionnel, les principaux scénarios d’échange et la structure
+générale du modèle métier.
+27
+
+Chapitre 3. Conception
+3.4.1 Diagramme de cas d’utilisation global
+Figure 3.5: Diagramme de cas d’utilisation global de WellnessHub
+Lediagrammedecasd’utilisationglobalprésentelepérimètrefonctionneldeWellnessHubdu
+point de vue de ses principaux acteurs. Il distingue le visiteur, l’employé, le responsable RH,
+28
+
+Chapitre 3. Conception
+l’expert et l’administrateur. Le visiteur peut consulter la page d’accueil, s’inscrire et utiliser le
+chatbot. L’employé gère son profil, réalise une évaluation de bien-être, consulte son parcours
+personnalisé, réserve des sessions, utilise la messagerie et soumet des feedbacks.
+Le responsable RH assure la gestion des employés, l’affectation des budgets, le suivi du
+programme de bien-être et la génération des rapports de son entreprise. L’expert administre
+son profil, ses certifications et ses sessions, consulte ses revenus puis valide la présence des
+participants. L’administrateur supervise les entreprises, les experts, les budgets, les paiements
+ainsi que la gestion des demandes et de la newsletter.
+Certainesfonctionnalitéssontcommunesàplusieursrôles,notammentl’authentification,la
+gestion du profil, la messagerie, les notifications et l’utilisation du chatbot. Le diagramme met
+égalementenévidencelesrelations «include»et «extend»,tellesquel’analyseautomatique
+des certifications, la gestion des paiements, l’envoi des notifications, ainsi que l’inscription
+sur une liste d’attente lorsqu’une session est complète.
+Enfin, les acteurs systèmes placés à droite représentent les services techniques sollicités
+par la plateforme, notamment le système de paiement, le système de notification, le chatbot et
+le service d’intelligence artificielle dédié à la validation des certifications des experts.
+3.4.2 Diagrammes de séquence des principaux scénarios
+Afin de conserver une conception claire et lisible, trois scénarios métier principaux sont
+retenus dans cette section. Ils représentent les flux les plus importants de la plateforme :
+l’allocation du budget depuis l’administrateur jusqu’à l’employé, la génération d’un parcours
+de bien-être personnalisé et la réservation d’une session avec le paiement associé. Les détails
+techniques propres à chaque module seront approfondis dans le Chapitre 4 consacré à la
+réalisation.
+Figure 3.6:Diagrammedeséquenced’allocationdubudgetdel’administrateurversl’employé
+29
+
+Chapitre 3. Conception
+Lepremierdiagrammeprésenteleprocessusglobald’allocationetdedistributiondubudget
+de bien-être. Dans un premier temps, l’administrateur attribue un budget à une entreprise
+depuis le BackOffice. La demande est transmise à travers l’API Gateway versAdminMs, qui
+vérifie les droits de l’administrateur et les informations de l’entreprise avant de mettre à jour
+le portefeuille correspondant dansEntrepriseX.
+Dans un second temps, le responsable RH distribue une partie du budget disponible aux
+employés de son entreprise.EntrepriseXvérifie le montant restant dans le portefeuille de
+l’entreprise, puis crédite le portefeuille de l’employé lorsque le solde est suffisant. Chaque
+opération est enregistrée afin de garantir la traçabilité des allocations et de permettre le suivi
+du budget consommé.
+Ce diagramme met en évidence la séparation des responsabilités entre les microservices.
+AdminMs assure la gestion globale des budgets et des transactions administratives, tandis que
+EntrepriseXgèrelesportefeuillespropresàl’entrepriseetàsesemployés.Cetteorganisation
+respecte l’architecture multi-tenant de la plateforme et évite l’accès direct d’un service aux
+bases de données d’un autre domaine.
+Figure 3.7: Diagramme de séquence de génération du parcours de bien-être personnalisé
+Le deuxième diagramme décrit la génération du parcours de bien-être personnalisé de
+l’employé. Lorsque l’employé accède à l’espaceWellness Journey, le frontend demande
+à EntrepriseX de rechercher un parcours existant. Si aucun parcours n’est disponible, le
+système invite l’employé à compléter une évaluation portant notamment sur son niveau de
+stress, la qualité de son sommeil, son énergie, son humeur et son état de santé général.
+Aprèslasoumissionduquestionnaire,lesréponsessontenregistréesdanslabasededonnées
+de l’entreprise.EntrepriseXsollicite ensuite le serviceWellness AI , qui récupère auprès
+30
+
+Chapitre 3. Conception
+de ExpertMs les sessions réellement disponibles. Ces informations sont transmises à l’API
+OpenAIafindeproduireunparcoursstructuréenplusieursphases,avecdesrecommandations
+adaptées au profil de l’employé.
+Le parcours généré est ensuite sauvegardé dans la base de données de l’entreprise et
+retourné à l’interface employé. L’utilisateur peut ainsi consulter les différentes phases de
+son parcours, les objectifs associés et les sessions recommandées. Ce scénario montre que
+l’intelligence artificielle ne génère pas uniquement des recommandations générales, mais
+s’appuie également sur les sessions réellement proposées par les experts de la plateforme.
+Figure 3.8: Diagramme de séquence de réservation et de paiement d’une session
+Le troisième diagramme présente le processus de réservation et de paiement d’une session.
+L’employé sélectionne une session depuis son interface, puis le frontend transmet la demande
+à travers l’API Gateway.EntrepriseXvérifie l’identité de l’employé et solliciteExpertMs
+afin de contrôler la disponibilité de la session, sa capacité, son prix réel et l’absence d’une
+réservation identique.
+Lorsque la session est disponible,ExpertMsdemande àEntrepriseXde vérifier le solde
+du portefeuille de l’employé et de déduire le nombre de jetons correspondant au prix de la
+session. Si le solde est suffisant, la réservation est enregistrée, le portefeuille de l’employé est
+débité et le montant est ajouté aux gains de l’expert. Une transaction financière est également
+enregistrée pour garantir la traçabilité de l’opération.
+En cas de solde insuffisant ou de session complète, la réservation est refusée et l’employé
+reçoit un message indiquant la cause de l’échec. Dans le cas d’une réservation réussie,
+l’employé reçoit une confirmation et l’expert est informé de la nouvelle participation.
+Ce diagramme illustre la coopération entreEntrepriseX, responsable du portefeuille
+et de l’expérience employé, etExpertMs, responsable des sessions, des réservations et des
+gains de l’expert. Il met également en évidence l’utilisation d’un mécanisme transactionnel
+31
+
+Chapitre 3. Conception
+permettant d’assurer la cohérence entre la réservation, le débit du portefeuille employé et la
+mise à jour du portefeuille expert.
+3.4.3 Diagramme de classes global
+Figure 3.9: Diagramme de classes global relationnel de WellnessHub
+Le diagramme de classes global présente les principales entités métier de WellnessHub
+ainsi que les relations qui les unissent. La classe abstraiteUser centralise les informations
+communesauxutilisateursetestspécialiséeenquatreprofils: Admin, Expert, HrPersonnel
+etEmployee.
+Le modèle met en évidence la gestion des entreprises et des ressources financières.
+Chaque entreprise possède un portefeuille dédié (WalletEntreprise), emploie plusieurs
+collaborateurs et est associée aux portefeuilles individuels des employés (EmployeeWallet).
+Les transactions financières assurent le suivi des mouvements entre les différents portefeuilles.
+Le domaine métier couvre également la gestion des sessions de bien-être. Les experts pro-
+posentdessessions,possèdentdescertifications,disposentd’unportefeuille( ExpertWallet)
+et peuvent valider la présence des participants. Les employés effectuent des réservations,
+formulentdesdemandesderéservation,suiventunparcoursdebien-êtrecomposédeplusieurs
+phasesetsessions,obtiennentdes badgesetsoumettentdes évaluationsàtraverslesfeedbacks.
+Enfin, les classesConversation, Messageet Notificationassurent les échanges entre
+les utilisateurs, tandis que les cardinalités précisent les contraintes de multiplicité et les
+associations entre les différentes entités du système.
+32
+
+Chapitre 3. Conception
+3.5 Conception de la base de données
+La conception de la base de données suit le découpage logique des microservices. Chaque
+domaine fonctionnel possède ses propres entités persistantes et ses repositories Spring Data
+JPA. Cette organisation limite les dépendances entre services, renforce leur autonomie et
+facilite leur évolution. Dans l’environnement de développement et de production, PostgreSQL
+est utilisé avec des bases logiques distinctes, configurées via les variables d’environnement
+ADMIN_DB,ENTREPRISE_X_DB,EXPERT_DBetCHAT_MS_DB.
+Table 3.1: Organisation conceptuelle des données par domaine
+Domaine Principales données conçues
+Administration Administrateurs, entreprises clientes, budgets, partenaires, contacts,
+newsletters, paiements, transactions, notifications et journaux d’audit.
+Entreprise Employés, responsables RH, portefeuilles, transactions internes, dé-
+partements, indicateurs RH, parcours bien-être, réponses aux question-
+naires, rapports et feedbacks.
+Expert Experts,certifications,disponibilités,typesdesessions,sessions,réser-
+vations, présences, portefeuille expert et transactions de rémunération.
+Communication Conversations, messages, types de messages, statuts de livraison et
+fichiers associés aux échanges.
+Intelligence artifi-
+cielle
+Métadonnéesdescertifications,fichierstransmispouranalyse,résultats
+OCR et documents conservés dans un espace de stockage dédié.
+Cette organisation des données reflète l’architecture distribuée de WellnessHub. Chaque
+microserviceresteresponsabledesonpropremodèlededonnées,tandisqueleséchangesentre
+services s’effectuent exclusivement via les API. Cette séparation améliore la confidentialité
+des informations, simplifie la maintenance de la plateforme et permet de faire évoluer un
+domaine fonctionnel sans impacter les autres composants.
+3.6 Maquettes (Figma)
+LesmaquettesFigmaontétéutiliséespourfixerlesparcoursprincipauxavantledéveloppement
+des interfaces React. Seules les maquettes les plus représentatives sont retenues dans ce
+chapitre, car elles servent à expliquer les objectifs ergonomiques et fonctionnels généraux.
+Les captures des écrans réellement implémentés seront, elles, commentées dans le chapitre de
+réalisation.
+33
+
+Chapitre 3. Conception
+Figure 3.10: Maquettes Figma de la landing page et des parcours d’inscription
+Les maquettes Figma présentent les principales interfaces conçues avant l’implémentation,
+notammentlalandingpageainsiquelesdifférentsparcoursd’inscriptiondesutilisateurs.Elles
+ont permis de définir l’organisation des écrans, la navigation entre les étapes et l’expérience
+utilisateur,toutenassurantuneinterfacecohérenteetintuitivepourlesvisiteurs,lesemployés,
+les responsables RH et les experts.
+Figure 3.11: Ensemble des maquettes Figma de l’espace Employé
+34
+
+Chapitre 3. Conception
+LesmaquettesFigmadel’espaceEmployéregroupentlesprincipalesinterfacesduparcours
+utilisateur, notamment le tableau de bord, le profil, les évaluations, les sessions, la messagerie,
+les notifications et les autres fonctionnalités associées. Elles ont permis de concevoir une
+navigation cohérente et de valider l’expérience utilisateur avant le développement.
+Figure 3.12: Ensemble des maquettes Figma de l’espace Responsable RH
+35
+
+Chapitre 3. Conception
+Les maquettes Figma de l’espace Responsable RH présentent l’ensemble des interfaces
+liées à la gestion des collaborateurs, des budgets, des indicateurs de bien-être, des rapports,
+des départements et des différentes fonctionnalités de pilotage. Elles ont servi à définir une
+interface orientée analyse et prise de décision.
+Figure 3.13: Ensemble des maquettes Figma de l’espace Expert
+Les maquettes Figma de l’espace Expert regroupent les différentes interfaces dédiées à la
+gestion du profil, des certifications, des disponibilités, des sessions, des réservations, de la
+messagerie, du portefeuille et des revenus. Elles ont permis de concevoir un espace de travail
+complet répondant aux besoins opérationnels des experts.
+36
+
+Chapitre 3. Conception
+Conclusion
+Ce chapitre a établi la conception de WellnessHub en reliant les besoins fonctionnels à une
+architecture microservices, à des modèles UML globaux, à une organisation des données
+et à des maquettes d’interface. La solution conçue repose sur une séparation claire des
+responsabilités:laGatewayexposeunpointd’entréeunique,lesmicroservicesportentchacun
+leur domaine, les données sont organisées par contexte métier et les interfaces sont structurées
+selon les rôles.
+Cette conception prépare directement la phase suivante. Le Chapitre 4 montrera comment
+ces choix ont été concrétisés dans le code source, les modules applicatifs, les traitements
+métier et les interfaces effectivement réalisées.
+37
+
+4
+Réalisation
+Introduction
+Ce chapitre présente la réalisation de WellnessHub à partir du système effectivement livré. Il
+ne suit pas une chronologie de développement; il organise plutôt le travail autour des grands
+domaines métier qui structurent la plateforme. Cette approche met en évidence la cohérence
+de l’implémentation et le lien entre les besoins, les choix techniques et les usages visibles par
+les utilisateurs.
+Six réalisations sont distinguées : la gestion des accès, le BackOffice, le périmètre
+entreprise et RH, le module expert et sessions, les services d’intelligence artificielle, puis
+la communication collaborative. Les diagrammes UML étant regroupés dans le chapitre de
+conception, les pages suivantes se concentrent sur les traitements implémentés, les règles
+métier et les interfaces qui illustrent les scénarios principaux.
+Les descriptions s’appuient sur les microservicesAdminMs, EntrepriseX, ExpertMs,
+ChatMS, sur le service PythonAI-CERTIFICATION-MS, ainsi que sur les applications React
+WellnessHub-FRONT2026etWellnessHub—BackOffice. L’objectif est de rester fidèle au
+code source tout en conservant une lecture fluide, adaptée à un rapport d’ingénieur.
+4.1 Réalisation 1 – Gestion des Accès, de l’Authentification
+et des Profils Utilisateurs
+4.1.1 Vue d’ensemble du module d’accès
+Le module d’accès constitue le socle de sécurité de WellnessHub. Il distingue les visiteurs, les
+employés, les responsables RH, les experts et les administrateurs. Il repose sur l’inscription
+contrôlée, la validation par OTP, l’authentification par jeton JWT et la redirection selon le
+rôle.
+Les employés et les responsables RH sont validés parEntrepriseX à partir du code
+entreprise et du domaine email autorisé. Les experts sont gérés parExpertMs et doivent
+fournir leurs informations professionnelles ainsi qu’une certification.
+38
+
+Chapitre 4. Réalisation
+4.1.2 Page d’accueil
+La page d’accueil présente les principaux services de WellnessHub et permet d’accéder
+rapidement à la connexion, à l’inscription et aux pages publiques de la plateforme.
+Figure 4.1: Page d’accueil de la plateforme WellnessHub
+Cette interface oriente le visiteur vers le parcours correspondant à son besoin.
+4.1.3 Orientation vers le parcours d’inscription
+Le parcours commence par le choix du profil. Cette étape permet d’adapter le formulaire aux
+besoins de l’employé, du responsable RH ou de l’expert.
+Figure 4.2: Écran de sélection du profil à l’inscription
+39
+
+Chapitre 4. Réalisation
+La figure montre le point d’entrée des différents parcours d’inscription et limite les erreurs
+de création de compte.
+4.1.4 Inscription de l’employé
+L’inscriptiondel’employéreposed’abordsurlecompanyCode.Lebackendvérifiel’existence
+de l’entreprise, son activation et la cohérence éventuelle du domaine email. Si l’entreprise est
+bloquée ou si l’adresse ne correspond pas au domaine attendu, le processus s’arrête avant la
+création du compte.
+40
+
+Chapitre 4. Réalisation
+(a) Code entreprise
+ (b) Détails du compte
+(c) Validation OTP
+ (d) Email OTP
+Figure 4.3: Parcours d’inscription de l’employé
+Ces captures résument le scénario employé : saisie du code entreprise, informations
+41
+
+Chapitre 4. Réalisation
+personnelles, OTP et email de vérification. Elles montrent que le compte n’est persistant
+qu’après validation de l’appartenance à une entreprise autorisée et confirmation par email.
+4.1.5 Inscription du responsable RH
+Le responsable RH suit un parcours proche, mais adapté à son rôle d’administration interne. Il
+renseigne les informations liées à l’entreprise, ses propres informations, les paramètres de
+sécurité, puis confirme le compte par OTP. Les mêmes contrôles de statut, de code entreprise
+et de domaine email sont appliqués.
+42
+
+Chapitre 4. Réalisation
+(a) Entreprise
+ (b) Responsable RH
+(c) Sécurité
+ (d) Vérification
+Figure 4.4: Parcours d’inscription du responsable RH
+La figure illustre un workflow plus administratif que celui de l’employé. Elle met en avant
+la responsabilité du compte RH, qui donnera accès aux collaborateurs, aux budgets et aux
+indicateurs de l’entreprise.
+43
+
+Chapitre 4. Réalisation
+4.1.6 Inscription de l’expert
+L’inscription de l’expert collecte son profil professionnel, ses spécialités, son expérience,
+son tarif, ses langues et une certification primaire. Cette certification doit être vérifiée par le
+modèle OCR avant l’accès complet à l’espace expert.
+(a) Informations personnelles
+ (b) Expertise et informations professionnelles
+(c) Dépôt de certification à l’inscription
+ (d) Vérification de l’adresse e-mail (OTP)
+Figure 4.5: Parcours d’inscription de l’expert
+44
+
+Chapitre 4. Réalisation
+Les écrans présentent les principales étapes de l’inscription de l’expert : création du profil,
+renseignement des informations professionnelles, dépôt de la certification et validation de
+l’adresse e-mail par code OTP.
+Figure 4.6: Email de bienvenue envoyé après activation du compte
+L’emaildebienvenueconfirmelafinduparcoursd’inscriptionetl’orientationdel’utilisateur
+vers l’espace correspondant à son rôle.
+4.1.7 Connexion et contrôle des statuts
+La connexion redirige chaque utilisateur vers le tableau de bord correspondant à son rôle.
+Pour les comptes Employee et HR, le backend revalide également l’état de l’entreprise. Un
+compte peut donc être refusé même avec des identifiants corrects si l’entreprise a été bloquée
+après l’inscription.
+45
+
+Chapitre 4. Réalisation
+Figure 4.7: Écran de connexion et redirection vers le tableau de bord dédié
+L’écrandeconnexionreprésentel’entréecommunedelaplateforme.Ilmasquelacomplexité
+du routage, mais le backend conserve les contrôles de rôle, de statut et d’entreprise active.
+4.1.8 Réinitialisation du mot de passe
+Laréinitialisationdumotdepassereposesurunprocessussécuriséentroisétapes.L’utilisateur
+saisit d’abord son adresse e-mail afin de recevoir un code de vérification. Il valide ensuite ce
+code OTP avant de définir un nouveau mot de passe, qui est enregistré de manière sécurisée
+sous forme hachée côté serveur.
+(a) Demande du code
+ (b) Validation du code OTP
+ (c) Nouveau mot de passe
+Figure 4.8: Parcours de réinitialisation du mot de passe
+Les trois écrans illustrent les différentes étapes du processus : la demande du code de
+vérification, la validation du code OTP reçu par e-mail, puis la définition d’un nouveau mot
+de passe. Ce mécanisme garantit que seul le propriétaire du compte peut réinitialiser ses
+identifiants de connexion.
+4.2 Réalisation2–AdministrationetPilotageduBackOffice
+46
+
+Chapitre 4. Réalisation
+4.2.1 Vue d’ensemble du BackOffice
+Le BackOffice est l’espace de gouvernance de WellnessHub. Il permet d’administrer les
+comptes internes, les entreprises, les budgets, les experts, les certifications, les paiements,
+les contenus publics et le journal d’audit. Il s’appuie principalement surAdminMs et sur
+l’application ReactWellnessHub—BackOffice.
+Le serviceAdminMsconserve les données de pilotage SaaS, tandis que les données opéra-
+tionnelles restent dansEntrepriseX et ExpertMs. Cette séparation permet au BackOffice
+d’orchestrer la plateforme sans accéder directement aux bases métier des autres services.
+4.2.2 Agrégation inter-services et sécurité d’administration
+Les tableaux de bord administrateur agrègent des informations issues de plusieurs services
+découverts via Eureka. En cas d’indisponibilité partielle, le service journalise l’erreur et
+continue avec les sources disponibles, ce qui évite de bloquer toute la console.
+La sécurité repose sur le JWT, les rôlesADMIN et SUPER_ADMIN, ainsi que sur une clé
+X-Service-Api-Key pour les appels internes. Les opérations sensibles, comme la gestion
+des comptes administrateurs, sont limitées auSUPER_ADMIN.
+4.2.3 Tableau de bord administrateur
+Letableaudeborddonneunevisionsynthétiquedel’activité:entreprises,utilisateurs,experts,
+wallets, réservations, demandes publiques et indicateurs financiers. Il sert de point de départ à
+la supervision globale.
+Figure 4.9: Tableau de bord multi-entreprises du BackOffice
+Cette capture doit montrer les cartes de synthèse et les indicateurs consolidés. Elle illustre
+le rôle du BackOffice comme console centrale de pilotage.
+4.2.4 Gestion des comptes administrateurs
+Lagestiondesadministrateurscouvrelacréation,lamodification,l’activationetlasuppression
+des comptes internes. Les droits différencient les opérations ordinaires de celles réservées au
+47
+
+Chapitre 4. Réalisation
+SUPER_ADMIN.
+(a) Liste des comptes
+ (b) Formulaire administrateur
+Figure 4.10: Gestion des comptes administrateurs
+Les deux vues présentent la liste des comptes et le formulaire de saisie. Elles montrent que
+l’administration de la plateforme est elle-même contrôlée par des rôles.
+4.2.5 Gestion des entreprises et des budgets
+Le BackOffice référence les entreprises clientes avec leur nom, code, statut, budget et éventuel
+domaine email. Ces informations sont réutilisées lors des inscriptions Employee/HR et lors
+des contrôles de connexion.
+(a) Liste et filtres
+ (b) Création ou modification
+Figure 4.11: Création et suivi des entreprises clientes
+La liste et le formulaire permettent de créer ou mettre à jour une entreprise. Le code
+entreprise devient ensuite l’identifiant fonctionnel utilisé dans les espaces RH et employés.
+48
+
+Chapitre 4. Réalisation
+(a) Fiche entreprise
+ (b) Blocage
+Figure 4.12: Contrôle du statut d’une entreprise
+La fiche et l’action de blocage montrent l’impact administratif du statut. Une entreprise
+désactivée ne peut plus accueillir de nouveaux comptes et peut bloquer l’accès des utilisateurs
+rattachés.
+4.2.6 Allocation des budgets, wallets et transactions d’entreprise
+Le budget attribué à une entreprise alimente son portefeuille. Les allocations et mouvements
+sont enregistrés afin de garder une trace des opérations financières liées aux collaborateurs.
+(a) Allocation de budget
+ (b) Transactions wallet
+Figure 4.13: Gestion budgétaire des entreprises
+La figure met en relation l’action d’allocation et l’historique des transactions. Elle montre
+que le budget n’est pas seulement affiché : il est suivi, distribué et auditable.
+4.2.7 Supervision des experts, certifications et paiements
+Le BackOffice supervise les experts, leurs statuts, leurs certifications, leurs sessions et les
+décisions sensibles comme le bannissement. Les informations détaillées restent obtenues via
+ExpertMs.
+49
+
+Chapitre 4. Réalisation
+(a) Liste experts
+ (b) Fiche expert
+Figure 4.14: Supervision des experts depuis le BackOffice
+La liste et la fiche expert donnent à l’administrateur une vue opérationnelle du profil, de
+l’activité et de l’état du compte expert.
+(a) Validation certification
+ (b) Bannissement
+Figure 4.15: Décisions administratives sur un expert
+Ces écrans illustrent les décisions administratives : validation ou rejet d’une certification,
+puis blocage éventuel d’un expert. Ils complètent le traitement automatique par un contrôle
+humain.
+4.2.8 Paiements experts et ledger financier
+Les paiements experts sont suivis parExpertPayment et par le ledger financier. Chaque
+versement met à jour les montants en attente, les montants payés et l’historique de transaction.
+50
+
+Chapitre 4. Réalisation
+(a) Payouts
+ (b) Ledger
+Figure 4.16: Paiements experts et traçabilité financière
+Lescapturesrelientl’actiondepaiementàsatracecomptable.Cettetraçabilitéestessentielle
+pour contrôler les revenus experts et éviter les doublons.
+4.2.9 Gestion des contenus publics et traçabilité
+Le BackOffice traite aussi les demandes de contact, les demandes de démonstration, les
+partenaires, la newsletter et les campagnes email. Chaque objet suit un statut qui facilite le
+suivi administratif.
+(a) Contacts
+ (b) Démonstrations
+Figure 4.17: Traitement des demandes commerciales entrantes
+Ces vues montrent comment les formulaires publics deviennent des demandes suivies.
+L’administrateur peut les lire, les qualifier et mettre à jour leur état.
+(a) Partenaires
+ (b) Newsletter
+Figure 4.18: Administration des contenus publics et campagnes email
+51
+
+Chapitre 4. Réalisation
+Les partenaires et la newsletter complètent la gestion publique de la plateforme. Ils
+permettent d’administrer les contenus visibles et les communications sortantes.
+4.2.10 Journal d’audit et traçabilité
+Le journal d’audit conserve les actions sensibles : modifications d’entreprises, budgets,
+transactions,contenuspublicsetdécisionsadministratives.Ilapporteunevisibilitéaposteriori
+sur les opérations réalisées.
+Figure 4.19: Consultation du journal d’audit du BackOffice
+CetteinterfacematérialiselatraçabilitéfonctionnelleduBackOffice.Elleaideàcomprendre
+qui a modifié quoi, sur quelle entité et à quel moment.
+4.3 Réalisation 3 – Gestion des Entreprises, des Ressources
+Humaines et des Employés
+4.3.1 Vue d’ensemble du module entreprise et RH
+Cette réalisation décrit le périmètre porté parEntrepriseX. Elle couvre le rattachement des
+utilisateursàuneentreprise,lesuividescollaborateurs,lesbudgetsindividuels,lesindicateurs
+RH, les rapports et les notifications internes.
+Le scénario commence lorsque l’entreprise existe dans le référentiel administré par le
+BackOffice. Les employés et responsables RH sont ensuite filtrés parcompanyCode, ce qui
+garantit l’isolation des données entre entreprises clientes.
+4.3.2 Gestion des entreprises et rattachement des utilisateurs
+Le responsable RH consulte uniquement les informations associées à son entreprise. Les
+tableaux de bord, collaborateurs, budgets et rapports sont filtrés par le contexte entreprise afin
+d’éviter toute fuite de données entre clients.
+52
+
+Chapitre 4. Réalisation
+Figure 4.20: Vue synthétique du périmètre entreprise côté RH
+CettevuesynthétiselepérimètreRH:effectif,activité,budgetetindicateursd’engagement.
+Elle sert de point d’entrée au pilotage de l’entreprise.
+53
+
+Chapitre 4. Réalisation
+Figure 4.21: Tableau de bord Workforce Analytics du responsable RH
+Le tableau de bordWorkforce Analyticsfournit au responsable RH une vue globale des
+indicateursdebien-êtredesonentreprise.Ilprésentenotammentleseffectifs,lescoremoyende
+bien-être, le budget consommé, le nombre de sessions réalisées ainsi que plusieurs graphiques
+permettant d’analyser la répartition des employés, les tendances de consommation du budget
+etlesperformancespardépartement.Cetteinterfacefacilitelesuividesactionsmisesenplace
+et aide le responsable RH à prendre des décisions basées sur les données.
+4.3.3 Gestion des employés
+Le module RH permet de gérer les employés rattachés à l’entreprise. Le responsable RH
+peut consulter leur profil, suivre leurs indicateurs de bien-être, leur budget ainsi que leur
+historique d’activité. Toutes les opérations sont limitées aux collaborateurs appartenant à sa
+propre entreprise.
+54
+
+Chapitre 4. Réalisation
+Figure 4.22: Liste des employés de l’entreprise
+Cetteinterfacecentraliselagestiondesemployés.Ellepermetderechercheruncollaborateur,
+de consulter ses principales informations et d’accéder rapidement aux actions disponibles.
+Figure 4.23: Formulaire d’ajout d’un employé
+Le formulaire d’ajout permet au responsable RH d’enregistrer un nouvel employé en
+renseignant les informations nécessaires à son intégration dans l’entreprise.
+55
+
+Chapitre 4. Réalisation
+Figure 4.24: Consultation du profil d’un employé
+La fiche employé regroupe les informations détaillées du collaborateur, notamment son
+profil,sonbudget,sesstatistiquesetsonhistoriqued’activité,afindefaciliterlesuiviindividuel.
+4.3.4 Budgets, portefeuilles et affectation des collaborateurs
+Le budget de l’entreprise constitue une enveloppe globale. Les tokens affectés aux employés
+sont déduits de cette enveloppe et enregistrés sous forme de transactions, afin de rendre les
+mouvements contrôlables.
+Figure 4.25: Affectation de tokens à un collaborateur
+56
+
+Chapitre 4. Réalisation
+Le formulaire d’allocation permet de sélectionner un collaborateur et un montant. La
+validation effective reste côté backend, ce qui protège le budget même en cas d’appel direct à
+l’API.
+Figure 4.26: Historique des transactions d’un employé
+L’historique des transactions permet au responsable RH de consulter l’ensemble des
+mouvements liés au portefeuille de l’employé, notamment les allocations de tokens, les
+consommations lors des réservations de sessions et les éventuels remboursements. Cette
+interface renforce la traçabilité des opérations financières et facilite le suivi du budget attribué
+à chaque collaborateur.
+4.3.5 Suivi RH, présences et rapports
+Le responsable RH suit l’usage réel du programme à partir des présences, des indicateurs et
+des rapports. Les présences validées par les experts sont remontées versEntrepriseX, où
+elles alimentent les statistiques de l’entreprise.
+Figure 4.27: Indicateurs de présence et d’engagement des collaborateurs
+57
+
+Chapitre 4. Réalisation
+Cette capture illustre la mesure de participation : présences, absences et tendances
+d’engagement. Elle relie les sessions expert au pilotage RH.
+Figure 4.28: Rapports RH générés depuis l’espace entreprise
+Lesrapportsformalisentlesrésultatsduprogramme.Ilspermettentdeconserveretpartager
+une synthèse au-delà de la consultation ponctuelle du tableau de bord.
+4.4 Réalisation 4 – Gestion des Experts, des Sessions et du
+Parcours Bien-Être
+4.4.1 Vue d’ensemble du module expert et parcours bien-être
+Cette réalisation couvre le cycle de prestation : profil expert, certifications, disponibilités,
+tarification, création de sessions, réservation, présence, rémunération, feedbacks et suivi du
+parcours bien-être. Elle implique principalementExpertMsetEntrepriseX.
+Le scénario complet part de la qualification de l’expert, se poursuit avec la publication de
+sessions, puis avec la réservation par l’employé. Après la séance, les présences, les revenus et
+les feedbacks prolongent le traitement métier.
+4.4.2 Gestion des experts, certifications et visibilité
+Après son authentification, l’expert accède à un tableau de bord centralisant les informations
+essentielles liées à son activité. Il peut suivre ses sessions, ses réservations, ses revenus, ses
+certificationsetaccéderrapidementauxdifférentesfonctionnalitésdesonespaceprofessionnel.
+58
+
+Chapitre 4. Réalisation
+Cette interface constitue le point d’entrée principal pour la gestion de son activité sur la
+plateforme.
+Figure 4.29: Tableau de bord de l’expert
+Le tableau de bord présente une vue synthétique de l’activité de l’expert. Il regroupe les
+principaux indicateurs, les prochaines sessions, les réservations et des raccourcis vers la
+gestion du profil, des disponibilités et des certifications.
+59
+
+Chapitre 4. Réalisation
+Figure 4.30: Gestion du profil professionnel de l’expert
+Cette interface permet à l’expert de gérer ses informations professionnelles, ses spécialités,
+ses langues, sa présentation et les autres éléments visibles par les entreprises et les employés.
+Figure 4.31: Suivi des certifications professionnelles
+L’écran des certifications permet de consulter l’état des documents déposés et de suivre
+leur validation. L’expert peut identifier si une certification est en attente, validée, rejetée ou en
+cours de revue par l’administrateur.
+60
+
+Chapitre 4. Réalisation
+4.4.3 Disponibilités, tarification et création des sessions
+L’expert configure ses disponibilités et sa tarification avant de créer des sessions. Ces données
+structurent l’offre visible par les employés et encadrent les réservations possibles.
+Figure 4.32: Configuration des disponibilités de l’expert
+La configuration des disponibilités définit les créneaux exploitables. Elle évite de proposer
+des sessions en dehors des plages réellement déclarées.
+61
+
+Chapitre 4. Réalisation
+Figure 4.33: Création d’une session par l’expert
+Le formulaire de session transforme une disponibilité en offre concrète : titre, description,
+date, capacité, format et prix. Il constitue le point de départ du scénario de réservation.
+4.4.4 Réservation, invitations et liste d’attente
+L’employé explore les sessions disponibles, choisit un créneau et lance une réservation. Le
+backend vérifie la capacité, l’absence de doublon et le solde disponible. Si la session est
+complète, l’utilisateur peut être placé en liste d’attente sans débit immédiat.
+62
+
+Chapitre 4. Réalisation
+Figure 4.34: Exploration des sessions par l’employé
+La vue d’exploration présente les sessions filtrables et les informations nécessaires au
+choix. Elle matérialise l’accès de l’employé à l’offre bien-être.
+Figure 4.35: Confirmation de participation à une session
+La confirmation distingue l’inscription validée de la liste d’attente. Elle montre le résultat
+fonctionnel des contrôles de capacité et de portefeuille.
+63
+
+Chapitre 4. Réalisation
+4.4.5 Suivi des présences, clôture et revenus experts
+Après la session, l’expert valide la présence des participants. Le statut de réservation devient
+COMPLETED ou ABSENT, puis l’information est transmise au périmètre entreprise pour les
+statistiques RH.
+Figure 4.36: Validation de présence par l’expert
+Cetteinterfaceclôturelescénarioopérationneldelasession.Elletransformelaparticipation
+prévue en présence effectivement constatée.
+64
+
+Chapitre 4. Réalisation
+Figure 4.37: Suivi financier côté expert
+Le suivi financier donne à l’expert une visibilité sur ses revenus et transactions. Il relie
+l’activité de prestation à sa conséquence économique.
+4.4.6 Parcours bien-être, feedbacks et historique
+Le parcours bien-être accompagne l’employé tout au long de son utilisation de la plateforme.
+Depuissontableaudebord,ilpeutsuivresaprogression,réalisersesévaluationsquotidiennes,
+consulter les résultats de son parcours personnalisé, partager son retour d’expérience et
+débloquer des badges récompensant son engagement.
+65
+
+Chapitre 4. Réalisation
+Figure 4.38: Tableau de bord de l’employé
+Le tableau de bord constitue le point d’entrée de l’employé. Il regroupe les principales
+informations relatives au bien-être, aux prochaines sessions, au parcours personnalisé, aux
+statistiques et aux différentes fonctionnalités accessibles.
+Figure 4.39: Évaluation quotidienne de l’état de bien-être
+Le questionnaire quotidien recueille des informations sur le bien-être physique, mental
+66
+
+Chapitre 4. Réalisation
+et émotionnel de l’employé. Ces réponses alimentent la génération des recommandations
+personnalisées.
+Figure 4.40: Résultat du parcours personnalisé de bien-être
+Cette interface présente le score global ainsi que les résultats détaillés de l’évaluation. Ces
+informations servent de base à la génération d’un parcours de bien-être adapté au profil de
+l’employé.
+67
+
+Chapitre 4. Réalisation
+Figure 4.41: Retour d’expérience après une session
+Après chaque session, l’employé peut partager son avis afin d’évaluer la qualité de
+l’accompagnement et de contribuer à l’amélioration continue des services proposés.
+Figure 4.42: Badges obtenus par l’employé
+Les badges récompensent la participation et la progression de l’employé tout au long
+de son parcours. Ils valorisent son engagement et encouragent la poursuite des activités
+recommandées.
+68
+
+Chapitre 4. Réalisation
+4.5 Réalisation5–IntelligenceArtificielleetAutomatisation
+4.5.1 Vue d’ensemble du module d’intelligence artificielle
+Cette réalisation présente les traitements IA réellement implémentés. Elle approfondit le
+fonctionnement technique sans répéter le parcours d’inscription expert : analyse OCR des
+certifications, application de la décision dansExpertMs, chatbot RAG dansAdminMs et
+génération assistée du parcours bien-être dansEntrepriseX.
+L’IA reste encadrée par les services métier. Le microservice Python analyse et classe
+les documents; ExpertMs applique le résultat;AdminMs pilote la base de connaissances;
+EntrepriseXutilise les réponses de l’employé et les sessions disponibles pour produire une
+recommandation.
+4.5.2 Pipeline OCR et prétraitement documentaire
+Le pipeline OCR commence par la validation et le téléchargement du fichier, limité en taille.
+Les images sont traitées directement; les PDF sont convertis en pages. Le service améliore
+ensuite la qualité visuelle par niveaux de gris, réduction du bruit, seuillage, contraste et
+nettoyage morphologique.
+69
+
+Chapitre 4. Réalisation
+Figure 4.43: Interface de dépôt du document de certification
+Cette interface situe le point d’entrée du pipeline : le dépôt du document. Elle rappelle les
+contraintes visibles pour l’utilisateur, comme le format, la taille et le suivi du traitement.
+70
+
+Chapitre 4. Réalisation
+Figure 4.44: Prévisualisation OCR et auto-remplissage des champs
+La prévisualisation OCR propose des champs extraits du document. L’utilisateur peut les
+corriger avant soumission, ce qui améliore l’ergonomie sans supprimer la validation finale.
+4.5.3 Classification, score de confiance et validation automatique
+La classification combine un score et des règles de sécurité documentaire. Les mots-clés,
+la structure du certificat, la qualité du texte et les indices de domaine contribuent au score.
+Les incohérences fortes, comme un nom absent ou un document hors périmètre, peuvent
+provoquer un rejet.
+Lesseuilsdistinguenttroisstatuts: VALID, SUSPICIOUSet INVALID.Lescasévidentssont
+automatisés, tandis que les résultats intermédiaires sont orientés vers une revue administrative.
+4.5.4 Application du résultat et gestion des cas incertains
+CertificationResultAppliertransforme la réponse IA en état métier. Il persiste le score,
+le texte extrait, les notes de vérification, les champs détectés et le statut. Une certification
+71
+
+Chapitre 4. Réalisation
+suspecte place l’expert enUNDER_REVIEWet déclenche une alerte administrateur.
+Un expert dont la certification est refusée, en attente ou suspecte n’accède pas directement
+autableaudebord.Ilestredirigéversunepagedédiéequiexpliquel’étatdudossieretpropose
+l’action adaptée : déposer un nouveau document ou attendre la revue administrative.
+(a) Certification refusée
+ (b) Certification en revue
+Figure 4.45: Redirection de l’expert vers la page de certification requise
+La figure distingue les cas de rejet et de revue. Elle montre que l’OCR peut bloquer
+l’accès, mais qu’un dossier suspect reste soumis à une décision humaine plutôt qu’à un rejet
+automatique.
+Figure 4.46: Validation ou rejet manuel après analyse incertaine
+Cette interface présente les éléments nécessaires à la décision humaine : document, score,
+statut, notes et actions de validation ou de rejet. Elle évite qu’un cas ambigu soit tranché sans
+contrôle.
+4.5.5 Assistant conversationnel et pipeline RAG
+Lechatbotpublicestportépar AdminMs.Ildétectelalangue,filtrelesquestionshorspérimètre,
+consulte un cache, recherche des connaissances par embeddings, puis génère une réponse
+contextualisée. Les prompts limitent les réponses au périmètre WellnessHub et excluent les
+conseils médicaux.
+72
+
+Chapitre 4. Réalisation
+Figure 4.47: Interface utilisateur de l’assistant conversationnel
+Le widget montre l’interaction visible avec l’assistant : question, réponse et éventuels
+boutons d’orientation. Il rend accessible un pipeline technique sans exposer sa complexité.
+4.5.6 Base de connaissances et amélioration continue
+La base de connaissances est administrable depuis le BackOffice. Les entrées possèdent une
+question, une réponse, une langue, une catégorie, une route fonctionnelle et un état actif. Les
+embeddings sont générés ou régénérés lors des créations et modifications.
+73
+
+Chapitre 4. Réalisation
+Figure 4.48: Gestion BackOffice de la base de connaissances
+Cette vue montre que le chatbot peut évoluer sans modification du code. L’administrateur
+enrichit les réponses et contrôle les contenus utilisés par le RAG.
+Figure 4.49: Suivi des questions et amélioration continue du chatbot
+Le suivi des questions réelles alimente l’amélioration continue. Les questions fréquentes
+ou non résolues deviennent des pistes d’enrichissement de la base.
+74
+
+Chapitre 4. Réalisation
+4.5.7 Génération assistée du parcours bien-être
+Le parcours personnalisé est construit à partir des réponses fournies par l’employé dans le
+questionnaire de bien-être. Le serviceWellnessAiService analyse ces données, identifie
+les dimensions nécessitant une attention particulière, puis sélectionne des sessions réellement
+disponiblessurlaplateforme.L’intelligenceartificielleintervientprincipalementpourorganiser
+etexpliquerlesrecommandations,tandisquelesrèglesmétierlocalesgarantissentlacohérence
+des résultats.
+Figure 4.50: Questionnaire d’évaluation du bien-être
+Le questionnaire recueille les informations relatives à l’état mental, physique et émotionnel
+del’employé.Sesréponsesconstituentlepointdedépartdel’évaluationetdelapersonnalisation
+du parcours.
+75
+
+Chapitre 4. Réalisation
+Figure 4.51: Résultat de l’évaluation du bien-être
+Cette interface restitue le score global ainsi que les résultats obtenus pour les principales
+dimensions analysées. Elle permet à l’employé de mieux comprendre son état de bien-être
+avant de consulter son programme personnalisé.
+76
+
+Chapitre 4. Réalisation
+Figure 4.52: Parcours personnalisé généré avec l’assistance de l’intelligence artificielle
+Àpartirdesrésultatsdel’évaluation,laplateformegénèreunparcoursstructuréenobjectifs
+et en recommandations. Ce programme est adapté aux besoins détectés et tient compte des
+activités disponibles dans WellnessHub.
+Figure 4.53: Prochaines sessions recommandées selon le questionnaire quotidien
+La sectionWhat should you do next?propose des actions adaptées aux réponses les plus
+récentes de l’employé. Elle actualise les recommandations en fonction de son état quotidien et
+l’oriente vers les sessions les plus pertinentes.
+77
+
+Chapitre 4. Réalisation
+Figure 4.54: Suivi de la progression dans le tableau de bord employé
+Letableaudebordpermetàl’employédesuivrel’avancementdesonparcours,lessessions
+réalisées et les objectifs atteints. Cette vue assure une continuité entre l’évaluation initiale, les
+recommandations générées et le suivi dans le temps.
+4.5.8 Synthèse technique du module IA
+Le module IA repose sur trois usages complémentaires : validation documentaire, assistance
+conversationnelle et recommandation de parcours. Dans les trois cas, l’automatisation reste
+contrôlée par des services métier, des seuils, des traces et, si nécessaire, une revue humaine.
+4.6 Réalisation 6 – Communication et Collaboration
+4.6.1 Vue d’ensemble du module de communication
+Le module de communication permet aux employés, responsables RH et experts d’échanger
+en temps réel au sein de la plateforme. Il repose sur le microserviceChatMS, qui assure la
+gestion des conversations, des messages et des notifications. Les échanges sont sécurisés par
+authentification JWT et synchronisés en temps réel grâce à WebSocket/STOMP.
+4.6.2 Messagerie temps réel
+Lamessageriepermetauxutilisateursdecréerdesconversations,d’envoyerdesmessagesetde
+partager des fichiers tout en bénéficiant d’une synchronisation instantanée. Les conversations
+sont enregistrées afin de conserver un historique complet des échanges.
+78
+
+Chapitre 4. Réalisation
+Figure 4.55: Interface de messagerie temps réel
+Cette interface regroupe les conversations, les messages échangés, les pièces jointes ainsi
+que les indicateurs de lecture. Elle facilite la communication entre les différents acteurs de la
+plateforme tout en offrant une expérience fluide.
+4.6.3 Centre de notifications
+En complément de la messagerie, la plateforme informe les utilisateurs des événements
+importantstelsquelesnouvellesréservations,lesmessagesreçus,lesvalidationsdecertification
+ou les modifications de sessions.
+Figure 4.56: Centre de notifications
+79
+
+Chapitre 4. Réalisation
+Le centre de notifications centralise les informations importantes et permet aux utilisateurs
+de consulter rapidement les événements nécessitant leur attention.
+4.6.4 Synthèse du module
+Le module de communication améliore les échanges entre les différents utilisateurs grâce à
+une messagerie temps réel et à un système de notifications intégré. Cette approche favorise la
+collaboration tout en garantissant la sécurité et la traçabilité des communications.
+Conclusion
+Ce chapitre a présenté la réalisation de la plateformeWellnessHubà travers ses principaux
+modulesfonctionnels:lagestiondesaccès,l’administration,lagestiondesressourceshumaines,
+la gestion des experts et des sessions, les fonctionnalités d’intelligence artificielle ainsi que
+le module de communication. Chaque réalisation illustre les fonctionnalités effectivement
+développées et leur intégration au sein de la plateforme.
+L’ensemble des modules forme une solution cohérente, reposant sur une architecture
+microservices et une logique métier clairement répartie entre les différents services. Cette
+organisation garantit la sécurité des données, la modularité de l’application et facilite son
+évolution.Lesinterfacesdéveloppéesoffrentuneexpérienceutilisateuradaptéeàchaqueprofil
+tout en répondant aux objectifs de digitalisation et d’amélioration du bien-être en entreprise.
+80
+
+5
+DevOps, Déploiement, Tests et Monitoring
+5.1 Introduction
+Ce chapitre présente la chaîne DevOps mise en place pour WellnessHub. L’objectif est de
+montrer comment le projet est construit, testé, analysé, conteneurisé, déployé puis supervisé
+de façon reproductible.
+La plateforme repose sur plusieurs microservices Spring Boot, un service Python FastAPI,
+PostgreSQL, RabbitMQ, Eureka, une API Gateway, une application React principale et un
+BackOffice. Cette organisation impose une automatisation rigoureuse afin de réduire les
+erreurs manuelles et de garder une visibilité claire sur chaque livraison.
+5.2 Architecture DevOps
+L’architecture DevOps s’appuie sur GitHub, Jenkins, SonarQube, Docker, Docker Compose,
+Prometheus, Grafana et Vercel. Le backend est construit et déployé sous forme de conteneurs,
+tandis que le frontend React est préparé pour un hébergement statique.
+Jenkinsorchestrelesétapesprincipales:intégrationcontinue,analysequalité,déploiement,
+tests de performance et monitoring. Les images Docker sont publiées dans une registry locale
+192.168.49.1:5000, puis exécutées sur le serveur cible100.122.204.32.
+81
+
+Chapitre 5. DevOps, Déploiement, Tests et Monitoring
+Figure 5.1: Architecture DevOps globale de WellnessHub
+LaFigure5.1situelesprincipauxcomposantsdelachaîne:dépôtGitHub,Jenkins,registry
+Docker, serveur de déploiement, services backend, frontend Vercel et pile de supervision. Elle
+sert de vue d’ensemble avant le détail des pipelines.
+5.3 Intégration et Déploiement Continus
+Le dossier jenkins sépare les responsabilités en plusieurs pipelines. Le job principal
+wellnesshub-pipelineneréalisepasdirectementlestraitements;ildéclenchelesjobsspé-
+cialisés wellnesshub-ci, wellnesshub-sonar, wellnesshub-cdet wellnesshub-monitoring.
+Cette séparation rend la chaîne plus lisible et permet d’exécuter uniquement certaines étapes
+si nécessaire.
+82
+
+Chapitre 5. DevOps, Déploiement, Tests et Monitoring
+Figure 5.2: Tableau de bord Jenkins des jobs WellnessHub
+La Figure 5.2 présente la vue Jenkins utilisée pour suivre l’état des jobs. Elle permet
+d’identifier rapidement les derniers builds, leur statut et les étapes en échec.
+Figure 5.3: Pipeline Jenkins orchestrateur
+La Figure 5.3 montre le rôle du pipeline principal. Il centralise le lancement des sous-
+pipelines et peut déclencher la chaîne complète après un push GitHub.
+5.3.1 Pipeline CI
+Le pipelinejenkins/ci/Jenkinsfile.ciclone la branchemain, vérifie l’environnement
+Java, Maven et Python, puis exécute les builds et les tests. Les services Java sont testés par
+Maven avec génération des rapports Surefire et JaCoCo. Le serviceAI-CERTIFICATION-MS
+utilisepytestet produit un rapport de couverture XML.
+83
+
+Chapitre 5. DevOps, Déploiement, Tests et Monitoring
+Figure 5.4: Pipeline CI : compilation, tests unitaires et archivage des rapports
+La Figure 5.4 illustre la validation technique appliquée avant toute analyse ou livraison.
+Cette étape détecte les erreurs de compilation et les régressions fonctionnelles de base.
+5.3.2 Pipeline CD
+Le pipelinejenkins/cd/Jenkinsfile.cdconstruit les images Docker, les pousse vers la
+registrylocale,puisdémarrelaplateformeavecDockerCompose.L’ordredeconstructiontient
+compte des dépendances : Eureka, Gateway, ExpertMS, EntrepriseX, AdminMS, ChatMS et
+AI-CERTIFICATION-MS.
+Figure 5.5: Pipeline CD : build Docker, push registry et déploiement Compose
+La Figure 5.5 présente la livraison automatisée du backend. Elle relie la construction des
+images, leur publication et le démarrage effectif des conteneurs.
+Aprèsledémarrage,lepipelinevérifielesconteneurs,Eureka,laGateway, AI-CERTIFICATION-MS
+et quelques endpoints de fumée. Ces contrôles confirment que le déploiement est exploitable
+et pas seulement terminé techniquement.
+84
+
+Chapitre 5. DevOps, Déploiement, Tests et Monitoring
+5.4 Conteneurisation
+Docker fournit un environnement d’exécution homogène pour les services. Les microservices
+Javapossèdentchacunun Dockerfile;leservicePythonembarqueFastAPI,TesseractOCR,
+Poppler et ses dépendances. Les composants Prometheus et Grafana disposent également
+d’images construites localement.
+Table 5.1: Services principaux déclarés dans Docker Compose
+Service Image Docker Rôle
+postgres postgres Base relationnelle commune avec des bases lo-
+giques dédiées à chaque domaine fonctionnel.
+rabbitmq rabbitmq Brokerdemessagesutilisépourleséchangesasyn-
+chrones et la messagerie.
+eureka wellness-eureka Registre de découverte des microservices.
+gateway wellness-gateway Point d’entrée unique des API et routage des re-
+quêtes.
+adminms wellness-adminms Gestion de l’administration, du BackOffice, des
+entreprises et des transactions.
+expertms wellness-expertms Gestion des experts, des certifications, des dispo-
+nibilités, des sessions et des réservations.
+entreprisex wellness-entreprisex Gestion des entreprises, des RH, des employés,
+des portefeuilles et du parcours bien-être.
+chatms wellness-chatms Gestion des conversations, des messages, des noti-
+fications et des communications temps réel.
+ai-certification-
+ms
+wellness-ai-
+certification
+Analyse OCR et validation automatique des certi-
+fications des experts.
+Le tableau résume les conteneurs centraux du backend. Il reprend la configuration réelle
+de docker-compose.yml, en écartant les détails d’environnement pour garder une lecture
+orientée exploitation.
+Figure 5.6: Déploiement des services avec Docker Compose
+La Figure 5.6 doit montrer l’état de la pile Docker Compose. Elle permet de vérifier les
+85
+
+Chapitre 5. DevOps, Déploiement, Tests et Monitoring
+conteneurs démarrés, leurs ports et leur état de santé.
+Figure 5.7: Conteneurs WellnessHub en cours d’exécution
+La Figure 5.7 complète la vue Compose par une preuve d’exécution. Elle est utile pour
+montrer que les services backend et les composants d’infrastructure sont bien lancés sur le
+serveur.
+5.5 Déploiement
+Le backend est déployé sur le serveur100.122.204.32. Docker Compose démarre d’abord
+les services d’infrastructure, puis les microservices applicatifs. Les bases PostgreSQL sont
+initialisées avant le démarrage complet afin d’éviter les erreurs de connexion au lancement.
+Les ports principaux exposés sont8761pour Eureka,8762pour la Gateway,8763pour
+AdminMS, 8764 pour ExpertMS,8765 pour EntrepriseX,8767 pour ChatMS et8090 pour
+le service IA. La Gateway reste toutefois le point d’entrée applicatif privilégié.
+Figure 5.8: Déploiement backend sur le serveur VPS
+LaFigure5.8présentelerésultatdudéploiementbackend:conteneursactifs,portsexposés
+et vérifications de disponibilité. Elle relie les étapes CD à l’environnement réel.
+86
+
+Chapitre 5. DevOps, Déploiement, Tests et Monitoring
+Le frontend suit une logique différente. L’applicationWellnessHub-FRONT2026 est une
+application Vite/React. Le fichiervercel.jsonredirige les routes versindex.html, ce qui
+permet à React Router de gérer la navigation côté client.
+Figure 5.9: Déploiement du frontend React sur Vercel
+La Figure 5.9 doit montrer le projet Vercel, le domaine et le statut du dernier déploiement.
+Elle prouve que l’interface utilisateur est livrée séparément du backend.
+5.6 Tests et Qualité Logicielle
+Lavalidationduprojetreposesurtroisniveauxcomplémentaires:testsunitairesetd’intégration,
+analyse statique SonarQube et tests de performance k6. Cette combinaison couvre à la fois la
+correction fonctionnelle, la maintenabilité et la tenue sous charge.
+5.6.1 Tests automatisés
+Les services Java sont testés par Maven et publient leurs rapports Surefire. La couverture
+est collectée avec JaCoCo. Le service Python produit un rapportpytest et un fichier de
+couverture XML. Ces artefacts sont archivés par Jenkins pour faciliter la consultation après
+chaque build.
+5.6.2 Analyse SonarQube
+Le pipeline jenkins/sonarqube/Jenkinsfile.sonar analyse les services Java avec
+Maven et JaCoCo. Le service Python est analysé avecsonarsource/sonar-scanner-cli.
+Chaque microservice possède une clé SonarQube dédiée, ce qui facilite le suivi par domaine.
+87
+
+Chapitre 5. DevOps, Déploiement, Tests et Monitoring
+Figure 5.10: Vue d’ensemble SonarQube des projets WellnessHub
+La Figure 5.10 donne une vision consolidée de la qualité logicielle : bugs, vulnérabilités,
+code smells, duplications et couverture.
+88
+
+Chapitre 5. DevOps, Déploiement, Tests et Monitoring
+Figure 5.11: Exécution du pipeline SonarQube dans Jenkins
+La Figure 5.11 montre l’intégration de SonarQube dans la chaîne CI/CD. Elle confirme
+que l’analyse qualité est automatisée et non réalisée manuellement.
+5.6.3 Tests de performance k6
+Les tests de charge sont définis dansjenkins/Jenkinsfile.performance. Le pipeline
+exécute grafana/k6:latestsur le réseauwellnesshub-network. Les paramètres princi-
+paux sont le nombre d’utilisateurs virtuels, la durée du test, le seuil P95 et le taux d’erreur
+maximal.
+Table 5.2: Paramètres principaux des tests k6
+Paramètre Valeur par dé-
+faut
+Rôle
+K6_VUS 20 Utilisateurs virtuels simulés.
+K6_DURATION 1m Durée du scénario.
+K6_P95_THRESHOLD 500 Seuil du percentile 95 en millisecondes.
+K6_ERROR_RATE 0.01 Taux d’erreur maximal accepté.
+TEST_TARGET ALL Périmètre testé : plateforme complète ou
+microservice spécifique.
+Le tableau montre les seuils suivis par Jenkins. Ils rendent les résultats exploitables, car un
+build peut échouer si la latence ou le taux d’erreur dépasse la limite fixée.
+89
+
+Chapitre 5. DevOps, Déploiement, Tests et Monitoring
+Figure 5.12: Résultats des tests de performance k6
+La Figure 5.12 doit présenter les métriques clés : requêtes par seconde, latence moyenne,
+P95, P99 et erreurs. Elle permet d’évaluer la stabilité de la plateforme sous charge.
+5.7 Monitoring
+La supervision repose sur Prometheus et Grafana. Prometheus collecte les métriques toutes
+les 15 secondes. Les services Spring Boot exposent/actuator/prometheus, tandis que
+AI-CERTIFICATION-MSexpose/metrics.
+90
+
+Chapitre 5. DevOps, Déploiement, Tests et Monitoring
+Figure 5.13: Cibles Prometheus configurées pour WellnessHub
+La Figure 5.13 vérifie que Prometheus atteint les services supervisés : Eureka, Gateway,
+AdminMS,ExpertMS,EntrepriseX,ChatMSetAI-CERTIFICATION-MS.L’état UPconfirme
+la disponibilité des métriques.
+91
+
+Chapitre 5. DevOps, Déploiement, Tests et Monitoring
+Figure 5.14: Vue d’ensemble Grafana de la plateforme
+La Figure 5.14 donne une lecture globale de l’état des services. Elle sert de point d’entrée
+au diagnostic après déploiement.
+Figure 5.15: Exemple de tableau de bord Grafana d’un microservice
+La Figure 5.15 présente un exemple de tableau de bord Grafana utilisé pour superviser
+un microservice de la plateforme. Chaque service (Gateway, Eureka, AdminMS, ExpertMS,
+EntrepriseX, ChatMS et AI-Certification-MS) dispose d’un tableau de bord construit sur le
+même modèle et affichant les principales métriques de supervision, telles que l’utilisation
+du processeur, la consommation mémoire, le temps de réponse, le débit des requêtes, le taux
+d’erreurs et la disponibilité du service. Cette homogénéité facilite le suivi de l’ensemble des
+microservices et permet de détecter rapidement toute anomalie.
+5.8 Sécurité de la Chaîne DevOps
+La sécurité est présente à plusieurs niveaux. Les pipelines utilisent des identifiants Jenkins
+pour accéder à GitHub et à SonarQube. Les secrets applicatifs ne sont pas codés en dur dans
+les images; ils sont injectés par le fichier.envou par les credentials Jenkins.
+92
+
+Chapitre 5. DevOps, Déploiement, Tests et Monitoring
+Les communications interservices sensibles s’appuient surSERVICE_API_KEY. Les accès
+utilisateur sont protégés par JWT dans les microservices. Docker Compose isole les services
+dans le réseauwellnesshub-network, et les volumes persistants protègent les données de
+PostgreSQL, RabbitMQ, les fichiers experts, les fichiers de chat et les documents analysés par
+l’IA.
+Figure 5.16: Gestion sécurisée des credentials Jenkins
+La Figure 5.16 doit illustrer l’usage des credentials Jenkins pour les accès externes. Elle
+montre que les jetons et mots de passe sont administrés hors du code source.
+5.9 Conclusion
+La chaîne DevOps de WellnessHub constitue un support essentiel pour la fiabilité du projet.
+Jenkins automatise les étapes de livraison, SonarQube contrôle la qualité, Docker standardise
+l’exécution, Docker Compose rend le déploiement reproductible, k6 mesure les performances
+et Prometheus/Grafana assurent l’observabilité.
+Cetteorganisationrestecohérenteavecl’architecturemicroservicesdelaplateforme.Chaque
+service peut être testé, analysé, conteneurisé et supervisé séparément, tout en participant à
+une chaîne globale de livraison adaptée à un projet d’ingénierie.
+93
+
+Conclusion Générale et Perspectives
+Bilan
+Ce projet de fin d’études a permis de concevoir, développer et déployerWellnessHub, une
+plateforme SaaS multi-tenant dédiée au bien-être en entreprise. Le travail a couvert tout le
+cycle logiciel : analyse des besoins, conception microservices, réalisation des modules métier
+(accès, BackOffice, entreprise/RH, experts et sessions, IA, communication), puis mise en
+place d’une chaîne DevOps complète intégrant CI/CD, conteneurisation, qualité de code, tests
+de performance et supervision.
+L’architecture retenue répond à la problématique initiale : offrir une solution unifiée et
+personnalisée, tout en isolant les données de chaque entreprise et en facilitant l’intégration de
+nouveaux clients sans réécriture du code existant.
+Difficultés Rencontrées
+• La gestion de lacohérence transactionnelle distribuéelors de la réservation de
+session (SAGA multi-service avec rollback compensatoire) a nécessité une conception
+rigoureuse pour éviter les incohérences entre les portefeuilles et le ledger central;
+• L’intégration de la chaîneOCR/IApour la validation des certifications a demandé un
+travail d’ajustement des seuils de confiance afin d’équilibrer automatisation et fiabilité;
+• Lamigration conceptuelled’une architecture mono-nœud de démonstration vers
+une architecture cible distribuée multi-tenant a soulevé des questions de sécurité
+(authentification inter-serveurs, exposition de l’annuaire de services) qui ont dû être
+anticipées dès la conception;
+• La mise en place d’une chaîne Development and Operations (DevOps) complète
+en parallèle du développement fonctionnel a représenté une charge de travail consé-
+quente, nécessitant une bonne coordination entre les préoccupations applicatives et
+opérationnelles.
+94
+
+Conclusion Générale et Perspectives
+Résultats
+• Une architecture microservices fonctionnelle, couvrant cinq services métier et deux
+services d’infrastructure, orchestrés via Eureka et un API Gateway unique;
+• Une couverture fonctionnelle complète des quatre profils utilisateurs identifiés (Admin,
+HR, Employee, Expert), structurée autour de modules métier cohérents;
+• Une chaîne CI/CD opérationnelle, avec analyse de qualité (SonarQube), couverture de
+tests (JaCoCo) et tests de charge (k6) intégrés au pipeline;
+•Une supervision temps réel de la plateforme via Prometheus et Grafana.
+Compétences Acquises
+Ce projet a permis de renforcer des compétences techniques et transversales :
+• Conception et implémentation d’architectures microservices distribuées (Spring Cloud,
+Eureka, Gateway, Feign);
+•Développementfull-stack(React, Spring Boot, FastAPI);
+• Intégrationdebriquesd’intelligenceartificielle(OCR,embeddings,modèlesdelangage)
+dans un produit métier réel;
+• Mise en œuvre d’une chaîne DevOps complète (Docker, Jenkins, SonarQube, Prome-
+theus, Grafana, k6);
+• Application concrète de la méthodologie agile SCRUM sur un projet de grande
+envergure;
+• Réflexion architecturale sur les problématiques du SaaS multi-tenant (isolation des
+données, sécurité inter-serveurs, scalabilité horizontale par client).
+Perspectives
+Plusieurs axes d’amélioration sont envisagés pour les évolutions futures de WellnessHub :
+1. Automatisation complète du provisioning multi-tenant— développer un pipeline
+Jenkins dédié (wellnesshub-cd-tenant) capable de provisionner automatiquement
+un nouveau serveur cloud d’entreprise (infrastructure as code);
+2. Migration vers une orchestration Kubernetes— remplacer Docker Compose par
+Kubernetes pour bénéficier de l’auto-scaling horizontal, durolling updateet d’une
+meilleure résilience;
+95
+
+Conclusion Générale et Perspectives
+3. Enrichissement du moteur d’IA— affiner le modèle de génération du parcours de
+bien-être avec des retours d’usage réels (apprentissage continu);
+4. Application mobile— développer une application mobile native pour améliorer
+l’engagement des employés (notifications push natives, réservation simplifiée);
+5. Extension du module analytics— proposer des tableaux de bord prédictifs (détection
+de risques de désengagement ou d’épuisement professionnel) aux équipes RH;
+6. Internationalisation— étendre la couverture linguistique de la plateforme et adap-
+ter la conformité réglementaire (RGPD et équivalents locaux) pour une expansion
+internationale.
+En conclusion, WellnessHub constitue une base solide pour répondre durablement aux
+enjeux du bien-être en entreprise. Le projet démontre également la viabilité d’une architecture
+SaaS multi-tenant, modulaire et enrichie par des traitements d’intelligence artificielle.
+96
+
+Bibliographie
+[1] S.Newman,BuildingMicroservices:DesigningFine-GrainedSystems,2 e éd.O’Reilly
+Media, 2021.
+[2] C.Richardson,MicroservicesPatterns:WithExamplesinJava.ManningPublications,
+2018.
+[3] L.Bass,P.ClementsetR.Kazman,SoftwareArchitectureinPractice,4 e éd.Addison-
+Wesley Professional, 2021.
+[29] K.Schwaberet J.Sutherland,The Scrum Guide : The Definitive Guide to Scrum.
+Scrum.org, 2020.
+97
+
+Webographie
+[4] Ahkili.“Ahkili-Consultervotrepsychologueenligne”,visitéle17juill.2026.adresse:
+https://www.ahkili.com.tn/fr
+[5] Veezen. “Veezen - Performance and Well-being”, visité le 17 juill. 2026. adresse :
+https://veezen.com/
+[6] WellPass. “WellPass - L’offre sport qui ameliore le bien-etre des salaries”, visité le
+17 juill. 2026. adresse :https://www.wellpass.ma/
+[7] Moka.Care. “Moka.Care - L’allie sante mentale de votre entreprise”, visité le 17 juill.
+2026. adresse :https://www.moka.care/
+[8] VMware / Broadcom.“SpringBootReferenceDocumentation”,visitéle15jan.2026.
+adresse :https://docs.spring.io/spring-boot/docs/current/reference/
+htmlsingle/
+[9] VMware / Broadcom.“SpringCloudDocumentation”,visitéle15jan.2026.adresse:
+https://spring.io/projects/spring-cloud
+[10] VMware / Broadcom. “Spring Cloud Gateway Reference Documentation”, visité
+le 15 jan. 2026. adresse :https://docs.spring.io/spring-cloud-gateway/
+docs/current/reference/html/
+[11] Netflix / Spring Cloud. “Spring Cloud Netflix Eureka”, visité le 15 jan. 2026.
+adresse :https://docs.spring.io/spring-cloud-netflix/docs/current/
+reference/html/
+[12] Meta Open Source.“React—TheLibraryforWebandNativeUserInterfaces”,visité
+le 15 jan. 2026. adresse :https://react.dev/
+[13] S.Ramírez. “FastAPI Documentation”, visité le 15 jan. 2026. adresse :https :
+//fastapi.tiangolo.com/
+[14] PostgreSQL Global Development Group. “PostgreSQL Documentation”, visité le
+15 jan. 2026. adresse :https://www.postgresql.org/docs/
+98
+
+Webographie
+[15] VMware / Broadcom. “RabbitMQ Documentation”, visité le 15 jan. 2026. adresse :
+https://www.rabbitmq.com/docs
+[16] Docker Inc.“Docker Documentation”, visité le 15 jan. 2026. adresse :https :
+//docs.docker.com/
+[17] Docker Inc.“Docker Compose Documentation”, visité le 15 jan. 2026. adresse :
+https://docs.docker.com/compose/
+[18] Jenkins Project. “Jenkins User Documentation”, visité le 15 jan. 2026. adresse :
+https://www.jenkins.io/doc/
+[19] SonarSource. “SonarQube Documentation”, visité le 15 jan. 2026. adresse :https:
+//docs.sonarsource.com/sonarqube/
+[20] EclEmma / Mountainminds. “JaCoCo Java Code Coverage Library”, visité le 15 jan.
+2026. adresse :https://www.jacoco.org/jacoco/
+[21] Grafana Labs. “Grafana k6 Documentation”, visité le 15 jan. 2026. adresse :https:
+//k6.io/docs/
+[22] Prometheus Authors. “Prometheus Documentation”, visité le 15 jan. 2026. adresse :
+https://prometheus.io/docs/introduction/overview/
+[23] Grafana Labs. “Grafana Documentation”, visité le 15 jan. 2026. adresse :https:
+//grafana.com/docs/grafana/latest/
+[24] Auth0. “JSON Web Tokens - jwt.io”, visité le 15 jan. 2026. adresse :https://jwt.
+io/introduction
+[25] VMware / Broadcom. “Spring Security Reference”, visité le 15 jan. 2026. adresse :
+https://docs.spring.io/spring-security/reference/
+[26] OpenAI. “OpenAI API Documentation”, visité le 15 jan. 2026. adresse :https :
+//platform.openai.com/docs
+[27] Tesseract OCR Contributors. “Tesseract Open Source OCR Engine”, visité le
+15 jan. 2026. adresse :https://github.com/tesseract-ocr/tesseract
+[28] OpenCV Team. “OpenCV Documentation”, visité le 15 jan. 2026. adresse :https:
+//docs.opencv.org/
+[30] C.Richardson. “Microservices Patterns”, visité le 15 jan. 2026. adresse :https:
+//microservices.io/patterns/index.html
+[31] C.Richardson. “Pattern : Saga”, visité le 15 jan. 2026. adresse :https : / /
+microservices.io/patterns/data/saga.html
+[32] Wellhub (Gympass). “Wellhub — Corporate Wellness Platform”, visité le 15 jan.
+2026. adresse :https://wellhub.com/
+99
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

@@ -1,3 +1,4 @@
+// API de configuration des règles transformant les anomalies en alertes.
 using Microsoft.AspNetCore.Authorization;using Microsoft.AspNetCore.Mvc;using StbMonitoring.Application.Contracts;using StbMonitoring.Application.Interfaces;using StbMonitoring.Domain.Constants;
 namespace StbMonitoring.Api.Controllers;
 [ApiController,Route("api/alert-rules"),Authorize(Policy=PermissionNames.AlertRulesManage)]public sealed class AlertRulesController(IOperationsService service):ControllerBase

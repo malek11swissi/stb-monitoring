@@ -9,6 +9,16 @@ Chaque SI est un microservice indépendant avec sa propre base. Les API exposée
 | SMS | MySQL | 5103 | `/api/v1/messages/SMS-STB-001/statut-livraison` | `serviceSmsAccessible=true` |
 | RH | SQL Server | 5104 | `/api/v1/employes/STB-TECH-001/situation-professionnelle` | `donneesRhAccessibles=true` |
 
+## HTTPS et TLS
+
+Générer et approuver le certificat de laboratoire avant de reconstruire les conteneurs :
+
+```powershell
+powershell -ExecutionPolicy Bypass -File simulators/generate-lab-certificate.ps1
+```
+
+Les API HTTPS sont ensuite disponibles sur `https://localhost:7101`, `7102`, `7103` et `7104`. Le fichier PFX est ignoré par Git. Dans STB Sentinel, créer un endpoint `Tls` séparé pour chaque URL HTTPS.
+
 ## Démarrage
 
 ```powershell

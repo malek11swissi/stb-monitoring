@@ -1,4 +1,5 @@
 namespace StbMonitoring.Domain.Entities;
+/// <summary>Point de contrôle HTTP, API JSON ou TLS et sa planification.</summary>
 public sealed class MonitoringEndpoint
 {
     private MonitoringEndpoint() { }

@@ -1,3 +1,4 @@
+/** Détail d'une alerte, occurrences techniques et ouverture de l'incident lié. */
 import {CommonModule} from '@angular/common';
 import {Component,OnInit} from '@angular/core';
 import {ActivatedRoute,RouterLink} from '@angular/router';

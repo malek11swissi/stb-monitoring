@@ -1,3 +1,4 @@
+/** Protège les routes privées et redirige les utilisateurs sans droit fonctionnel. */
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from './auth.service';

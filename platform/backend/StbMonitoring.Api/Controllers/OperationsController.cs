@@ -1,3 +1,4 @@
+// API transversale des résumés, SLA et notifications internes.
 using System.Security.Claims;using Microsoft.AspNetCore.Authorization;using Microsoft.AspNetCore.Mvc;using StbMonitoring.Application.Contracts;using StbMonitoring.Application.Interfaces;using StbMonitoring.Domain.Constants;
 namespace StbMonitoring.Api.Controllers;
 [ApiController,Authorize]public sealed class OperationsController(IOperationsService service):ControllerBase

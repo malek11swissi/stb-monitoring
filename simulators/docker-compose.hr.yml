@@ -25,6 +25,11 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__SqlServer: "Server=hr-sqlserver,1433;Database=hr_simulator;User Id=sa;Password=ChangeMe_SQL_123!;TrustServerCertificate=True;Connect Timeout=3"
       Lab__AdminKey: change-this-lab-key
-    ports: ["5104:8080"]
+      Kestrel__Endpoints__Http__Url: "http://+:8080"
+      Kestrel__Endpoints__Https__Url: "https://+:8443"
+      Kestrel__Endpoints__Https__Certificate__Path: "/https/stb-lab.pfx"
+      Kestrel__Endpoints__Https__Certificate__Password: "ChangeMe_Lab_TLS_123!"
+    volumes: ["./certificates:/https:ro"]
+    ports: ["5104:8080", "7104:8443"]
 volumes:
   hr_sqlserver_data:

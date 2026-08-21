@@ -8,9 +8,9 @@ public sealed record AlertOccurrenceResponse(Guid Id,Guid CheckResultId,Monitori
 public sealed record CreateIncidentRequest(Guid? AlertId,Guid? SystemId,Guid? EndpointId,[Required]string Title,[Required]string Description,IncidentCategory Category,IncidentPriority Priority);
 public sealed record UpdateIncidentRequest(Guid? SystemId,Guid? EndpointId,[Required]string Title,[Required]string Description,IncidentCategory Category,IncidentPriority Priority);
 public sealed record AssignIncidentRequest(Guid UserId);
-public sealed record ResolveIncidentRequest([Required]string Summary,string? RootCause);
+public sealed record ResolveIncidentRequest([Required]string Summary,string? RootCause,[Required]string CorrectiveAction,string? PreventiveAction,string? ResolutionEvidence);
 public sealed record AddCommentRequest([Required]string Content,string CommentType="Comment",bool IsInternal=true);
-public sealed record IncidentResponse(Guid Id,string IncidentNumber,Guid? AlertId,Guid? SystemId,Guid? EndpointId,string? SystemName,string Title,string Description,IncidentCategory Category,IncidentPriority Priority,IncidentStatus Status,SlaStatus SlaStatus,Guid? AssignedToUserId,string? AssignedToName,DateTime? ResponseDueAt,DateTime? ResolutionDueAt,DateTime? ResolvedAt,string? ResolutionSummary,string? RootCause,int ReopenCount,DateTime CreatedAt,DateTime UpdatedAt);
+public sealed record IncidentResponse(Guid Id,string IncidentNumber,Guid? AlertId,Guid? SystemId,Guid? EndpointId,string? SystemName,string Title,string Description,IncidentCategory Category,IncidentPriority Priority,IncidentStatus Status,SlaStatus SlaStatus,Guid? AssignedToUserId,string? AssignedToName,DateTime? ResponseDueAt,DateTime? ResolutionDueAt,DateTime? ResolvedAt,string? ResolutionSummary,string? RootCause,string? CorrectiveAction,string? PreventiveAction,string? ResolutionEvidence,int ReopenCount,DateTime CreatedAt,DateTime UpdatedAt);
 public sealed record IncidentDetailResponse(IncidentResponse Incident,IReadOnlyCollection<CommentResponse> Comments,IReadOnlyCollection<HistoryResponse> History);
 public sealed record CommentResponse(Guid Id,Guid UserId,string UserName,string Content,string CommentType,bool IsInternal,DateTime CreatedAt);
 public sealed record HistoryResponse(Guid Id,Guid? UserId,string Action,string? OldValue,string? NewValue,string? Details,DateTime CreatedAt);

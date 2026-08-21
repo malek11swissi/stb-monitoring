@@ -1,3 +1,4 @@
+// API de consultation et cycle acquittement-résolution-clôture des alertes.
 using System.Security.Claims;using Microsoft.AspNetCore.Authorization;using Microsoft.AspNetCore.Mvc;using StbMonitoring.Application.Interfaces;using StbMonitoring.Domain.Constants;
 namespace StbMonitoring.Api.Controllers;
 [ApiController,Route("api/alerts"),Authorize]public sealed class AlertsController(IOperationsService service,IIdentityStore identity):ControllerBase
