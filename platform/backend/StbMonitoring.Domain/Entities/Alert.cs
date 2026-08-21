@@ -45,4 +45,5 @@ public sealed class Alert
     public void Resolve() { if (Status == AlertStatus.Closed) return; Status = AlertStatus.Resolved; ResolvedAt = DateTime.UtcNow; UpdatedAt = DateTime.UtcNow; }
     public void Close(Guid userId) { if (Status != AlertStatus.Resolved) throw new InvalidOperationException("Une alerte doit être résolue avant clôture."); Status = AlertStatus.Closed; ClosedAt = DateTime.UtcNow; ClosedByUserId = userId; UpdatedAt = DateTime.UtcNow; }
     public void LinkIncident(Guid id) { IncidentId = id; UpdatedAt = DateTime.UtcNow; }
+    public void UnlinkIncident() { IncidentId = null; UpdatedAt = DateTime.UtcNow; }
 }

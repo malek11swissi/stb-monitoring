@@ -13,9 +13,10 @@ namespace StbMonitoring.Api.Controllers;
 public sealed class IncidentsController(IOperationsService service,StbMonitoring.Infrastructure.Persistence.MonitoringDbContext db) : ControllerBase
 {
     [HttpGet, Authorize(Policy = PermissionNames.IncidentsRead)]
-    public async Task<IActionResult> All(CancellationToken ct)
+    public async Task<IActionResult> All([FromQuery]bool archived=false,CancellationToken ct=default)
     {
         var incidents = await service.IncidentsAsync(ct);
+        incidents=incidents.Where(x=>x.IsArchived==archived).ToArray();
         return Ok(User.IsInRole(RoleNames.Technician)
             ? incidents.Where(x => x.AssignedToUserId == Actor())
             : incidents);
@@ -42,15 +43,15 @@ public sealed class IncidentsController(IOperationsService service,StbMonitoring
     public async Task<IActionResult> Assign(Guid id, AssignIncidentRequest request, CancellationToken ct)
     { await service.AssignAsync(id, request.UserId, Actor(), ct); return NoContent(); }
 
-    [HttpPost("{id:guid}/start"), Authorize(Policy = PermissionNames.IncidentsWork)]
+    [HttpPost("{id:guid}/start"), Authorize(Policy = PermissionNames.IncidentsWork), Authorize(Roles = RoleNames.Technician)]
     public async Task<IActionResult> Start(Guid id, CancellationToken ct)
     { if (await TechnicianAccess(id, ct) is { } denied) return denied; await service.StartAsync(id, Actor(), ct); return NoContent(); }
 
-    [HttpPost("{id:guid}/pending"), Authorize(Policy = PermissionNames.IncidentsWork)]
+    [HttpPost("{id:guid}/pending"), Authorize(Policy = PermissionNames.IncidentsWork), Authorize(Roles = RoleNames.Technician)]
     public async Task<IActionResult> Pending(Guid id, CancellationToken ct)
     { if (await TechnicianAccess(id, ct) is { } denied) return denied; await service.PendingAsync(id, Actor(), ct); return NoContent(); }
 
-    [HttpPost("{id:guid}/resolve"), Authorize(Policy = PermissionNames.IncidentsResolve)]
+    [HttpPost("{id:guid}/resolve"), Authorize(Policy = PermissionNames.IncidentsResolve), Authorize(Roles = RoleNames.Technician)]
     public async Task<IActionResult> Resolve(Guid id, ResolveIncidentRequest request, CancellationToken ct)
     { if (await TechnicianAccess(id, ct) is { } denied) return denied; await service.ResolveIncidentAsync(id, request, Actor(), ct); return NoContent(); }
 
@@ -62,13 +63,25 @@ public sealed class IncidentsController(IOperationsService service,StbMonitoring
     public async Task<IActionResult> Reopen(Guid id, CancellationToken ct)
     { await service.ReopenAsync(id, Actor(), ct); return NoContent(); }
 
-    [HttpPost("{id:guid}/comments"), Authorize(Policy = PermissionNames.IncidentsWork)]
+    [HttpPost("{id:guid}/cancel"),Authorize(Policy=PermissionNames.IncidentsArchive)]
+    public async Task<IActionResult> Cancel(Guid id,IncidentActionReasonRequest request,CancellationToken ct){await service.CancelIncidentAsync(id,request.Reason,Actor(),ct);return NoContent();}
+
+    [HttpPost("{id:guid}/archive"),Authorize(Policy=PermissionNames.IncidentsArchive)]
+    public async Task<IActionResult> Archive(Guid id,CancellationToken ct){await service.ArchiveIncidentAsync(id,Actor(),ct);return NoContent();}
+
+    [HttpPost("{id:guid}/restore"),Authorize(Policy=PermissionNames.IncidentsArchive)]
+    public async Task<IActionResult> Restore(Guid id,CancellationToken ct){await service.RestoreIncidentAsync(id,Actor(),ct);return NoContent();}
+
+    [HttpDelete("{id:guid}"),Authorize(Policy=PermissionNames.IncidentsDelete)]
+    public async Task<IActionResult> Delete(Guid id,[FromBody]IncidentActionReasonRequest request,CancellationToken ct){await service.DeleteIncidentAsync(id,request.Reason,Actor(),ct);return NoContent();}
+
+    [HttpPost("{id:guid}/comments"), Authorize(Policy = PermissionNames.IncidentsWork), Authorize(Roles = RoleNames.Technician)]
     public async Task<IActionResult> Comment(Guid id, AddCommentRequest request, CancellationToken ct)
     { if (await TechnicianAccess(id, ct) is { } denied) return denied; await service.CommentAsync(id, request, Actor(), ct); return NoContent(); }
 
     [HttpGet("{id:guid}/attachments"), Authorize(Policy = PermissionNames.IncidentsRead)]
     public async Task<IActionResult> Attachments(Guid id,CancellationToken ct){if(await TechnicianAccess(id,ct)is{}denied)return denied;return Ok(await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToArrayAsync(db.IncidentAttachments.AsNoTracking().Where(x=>x.IncidentId==id).OrderByDescending(x=>x.CreatedAt).Select(x=>new{x.Id,x.FileName,x.ContentType,size=x.Content.LongLength,x.IsResolutionProof,x.CreatedAt}),ct));}
-    [HttpPost("{id:guid}/attachments"),Authorize(Policy=PermissionNames.IncidentsWork),RequestSizeLimit(10_485_760)]
+    [HttpPost("{id:guid}/attachments"),Authorize(Policy=PermissionNames.IncidentsWork),Authorize(Roles=RoleNames.Technician),RequestSizeLimit(10_485_760)]
     public async Task<IActionResult> Upload(Guid id,IFormFile file,[FromForm]bool isResolutionProof,CancellationToken ct){if(await TechnicianAccess(id,ct)is{}denied)return denied;if(file.Length is 0 or >10_485_760)return BadRequest(new{message="Fichier vide ou supérieur à 10 Mo."});await using var ms=new MemoryStream();await file.CopyToAsync(ms,ct);var x=new StbMonitoring.Domain.Entities.IncidentAttachment(id,Actor(),file.FileName,file.ContentType,ms.ToArray(),isResolutionProof);db.Add(x);await db.SaveChangesAsync(ct);return Ok(new{x.Id,x.FileName,x.ContentType,size=x.Content.LongLength,x.IsResolutionProof,x.CreatedAt});}
     [HttpGet("attachments/{attachmentId:guid}/download"),Authorize(Policy=PermissionNames.IncidentsRead)]
     public async Task<IActionResult> Download(Guid attachmentId,CancellationToken ct){var x=await db.IncidentAttachments.AsNoTracking().SingleOrDefaultAsync(x=>x.Id==attachmentId,ct);if(x is null)return NotFound();if(await TechnicianAccess(x.IncidentId,ct)is{}denied)return denied;return File(x.Content,x.ContentType,x.FileName);}

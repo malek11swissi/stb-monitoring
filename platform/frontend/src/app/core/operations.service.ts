@@ -4,7 +4,7 @@ import { HttpClient } from '@angular/common/http';
 
 export interface AlertItem { id:string;alertNumber:string;systemId:string;systemName:string;endpointId:string;endpointName:string;type:string;title:string;description:string;severity:string;status:string;occurrenceCount:number;firstDetectedAt:string;lastDetectedAt:string;acknowledgedAt?:string;resolvedAt?:string;incidentId?:string;lastError?:string }
 export interface AlertRule { id:string;name:string;description:string;eventType:string;severity:string;consecutiveFailures:number;deduplicationMinutes:number;autoResolve:boolean;notifyInApp:boolean;isActive:boolean;systemId?:string;endpointId?:string }
-export interface Incident { id:string;incidentNumber:string;alertId?:string;systemId?:string;endpointId?:string;systemName?:string;title:string;description:string;category:string;priority:string;status:string;slaStatus:string;assignedToUserId?:string;assignedToName?:string;responseDueAt?:string;resolutionDueAt?:string;resolvedAt?:string;resolutionSummary?:string;rootCause?:string;correctiveAction?:string;preventiveAction?:string;resolutionEvidence?:string;reopenCount:number;createdAt:string;updatedAt:string }
+export interface Incident { id:string;incidentNumber:string;alertId?:string;systemId?:string;endpointId?:string;systemName?:string;title:string;description:string;category:string;priority:string;status:string;slaStatus:string;assignedToUserId?:string;assignedToName?:string;responseDueAt?:string;resolutionDueAt?:string;resolvedAt?:string;resolutionSummary?:string;rootCause?:string;correctiveAction?:string;preventiveAction?:string;resolutionEvidence?:string;cancellationReason?:string;cancelledAt?:string;isArchived:boolean;archivedAt?:string;archivedByUserId?:string;reopenCount:number;createdAt:string;updatedAt:string }
 export interface IncidentDetail { incident:Incident;comments:{id:string;userName:string;content:string;commentType:string;isInternal:boolean;createdAt:string}[];history:{id:string;action:string;oldValue?:string;newValue?:string;details?:string;createdAt:string}[] }
 export interface NotificationItem { id:string;type:string;title:string;message:string;severity:string;entityType?:string;entityId?:string;actionUrl?:string;isRead:boolean;createdAt:string }
 export interface OperationsSummary { openAlerts:number;criticalAlerts:number;openIncidents:number;unassignedIncidents:number;slaBreached:number;unreadNotifications:number }
@@ -28,12 +28,13 @@ export class OperationsService {
   saveRule(rule:any,id?:string){return id?this.http.put(`${this.api}/alert-rules/${id}`,rule):this.http.post(`${this.api}/alert-rules`,rule)}
   ruleActive(id:string,value:boolean){return this.http.patch(`${this.api}/alert-rules/${id}/active?value=${value}`,{})}
   deleteRule(id:string){return this.http.delete(`${this.api}/alert-rules/${id}`)}
-  incidents(){return this.http.get<Incident[]>(`${this.api}/incidents`)}
+  incidents(archived=false){return this.http.get<Incident[]>(`${this.api}/incidents`,{params:{archived}})}
   incident(id:string){return this.http.get<IncidentDetail>(`${this.api}/incidents/${id}`)}
   createIncident(value:any){return this.http.post<Incident>(`${this.api}/incidents`,value)}
   updateIncident(id:string,value:any){return this.http.put<Incident>(`${this.api}/incidents/${id}`,value)}
   assign(id:string,userId:string){return this.http.post(`${this.api}/incidents/${id}/assign`,{userId})}
   action(id:string,action:string,body:any={}){return this.http.post(`${this.api}/incidents/${id}/${action}`,body)}
+  deleteIncident(id:string,reason:string){return this.http.delete(`${this.api}/incidents/${id}`,{body:{reason}})}
   comment(id:string,content:string){return this.http.post(`${this.api}/incidents/${id}/comments`,{content,commentType:'Comment',isInternal:true})}
   attachments(id:string){return this.http.get<IncidentAttachment[]>(`${this.api}/incidents/${id}/attachments`)}
   uploadAttachment(id:string,file:File,proof:boolean){const form=new FormData();form.append('file',file);form.append('isResolutionProof',String(proof));return this.http.post<IncidentAttachment>(`${this.api}/incidents/${id}/attachments`,form)}
