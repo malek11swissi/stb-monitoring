@@ -20,3 +20,8 @@ public sealed record SystemRiskPrediction(
 
 public sealed record RiskFactor(string Code,string Label,double Contribution);
 public sealed record RiskyEndpoint(Guid EndpointId,string Name,int RiskScore,string RiskLevel);
+public sealed record IncidentRecommendationRequest(IncidentRecommendationInput Incident,IReadOnlyCollection<ResolvedIncidentInput> ResolvedIncidents);
+public sealed record IncidentRecommendationInput(Guid Id,string Title,string Description,string Category,string Priority,Guid? SystemId,string? SystemName);
+public sealed record ResolvedIncidentInput(Guid Id,string IncidentNumber,string Title,string Description,string Category,string Priority,Guid? SystemId,string? SystemName,string? RootCause,string CorrectiveAction,string? PreventiveAction,string? ResolutionSummary);
+public sealed record IncidentResolutionRecommendation(bool Available,string ModelName,string ModelVersion,int CandidateCount,IReadOnlyCollection<ResolutionSuggestion> Recommendations,string? Message);
+public sealed record ResolutionSuggestion(Guid SourceIncidentId,string IncidentNumber,string Title,double Similarity,string SourceType,string? RootCause,string CorrectiveAction,string? PreventiveAction,string? ResolutionSummary);

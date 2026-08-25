@@ -45,5 +45,24 @@ public sealed class AiPredictionService(HttpClient http,MonitoringDbContext db,I
         catch(HttpRequestException ex){logger.LogWarning(ex,"Service IA indisponible pour {SystemId}",systemId);return Unavailable(systemId,"Microservice IA temporairement indisponible.");}
     }
 
+    public async Task<IncidentResolutionRecommendation> RecommendResolutionAsync(Guid incidentId,Guid technicianId,CancellationToken ct)
+    {
+        var incident=await db.Incidents.AsNoTracking().SingleOrDefaultAsync(x=>x.Id==incidentId,ct)??throw new KeyNotFoundException("Incident introuvable.");
+        if(incident.AssignedToUserId!=technicianId)throw new UnauthorizedAccessException("Seul le technicien affecté peut demander une recommandation.");
+        var systemNames=await db.Systems.AsNoTracking().ToDictionaryAsync(x=>x.Id,x=>x.Name,ct);
+        var history=await db.Incidents.AsNoTracking().Where(x=>x.Id!=incidentId&&(x.Status==IncidentStatus.Resolved||x.Status==IncidentStatus.Closed)&&x.CorrectiveAction!=null)
+            .OrderByDescending(x=>x.ResolvedAt).Take(300).ToArrayAsync(ct);
+        string? Name(Guid? id)=>id.HasValue&&systemNames.TryGetValue(id.Value,out var name)?name:null;
+        var request=new IncidentRecommendationRequest(
+            new(incident.Id,incident.Title,incident.Description,incident.Category.ToString(),incident.Priority.ToString(),incident.SystemId,Name(incident.SystemId)),
+            history.Select(x=>new ResolvedIncidentInput(x.Id,x.IncidentNumber,x.Title,x.Description,x.Category.ToString(),x.Priority.ToString(),x.SystemId,Name(x.SystemId),x.RootCause,x.CorrectiveAction!,x.PreventiveAction,x.ResolutionSummary)).ToArray());
+        try{
+            using var response=await http.PostAsJsonAsync("api/v1/predictions/incident-resolution",request,ct);
+            if(!response.IsSuccessStatusCode)return UnavailableRecommendation($"Service IA en erreur HTTP {(int)response.StatusCode}.");
+            return await response.Content.ReadFromJsonAsync<IncidentResolutionRecommendation>(cancellationToken:ct)??UnavailableRecommendation("Réponse IA vide.");
+        }catch(Exception ex)when(ex is HttpRequestException or TaskCanceledException){logger.LogWarning(ex,"Recommandation IA indisponible pour {IncidentId}",incidentId);return UnavailableRecommendation("Microservice IA temporairement indisponible.");}
+    }
+
     private static SystemRiskPrediction Unavailable(Guid id,string message)=>new(false,id,"system-risk-random-forest","unavailable","unavailable",0,0,0,0,0,"Unavailable",0,null,[],[],DateTime.UtcNow,message);
+    private static IncidentResolutionRecommendation UnavailableRecommendation(string message)=>new(false,"tfidf-cosine-retrieval","unavailable",0,[],message);
 }

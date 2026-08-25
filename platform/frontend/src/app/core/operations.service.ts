@@ -16,6 +16,7 @@ export interface ReportIncident {id:string;incidentNumber:string;title:string;sy
 export interface ReportData {from:string;to:string;generatedAt:string;incidents:ReportIncident[]}
 export interface MaintenanceWindow {id:string;title:string;description?:string;systemId?:string;endpointId?:string;startsAt:string;endsAt:string;suppressAlerts:boolean;isCancelled:boolean;createdByUserId:string;createdAt:string}
 export interface IncidentAttachment {id:string;fileName:string;contentType:string;size:number;isResolutionProof:boolean;createdAt:string}
+export interface ResolutionRecommendation {available:boolean;modelName:string;modelVersion:string;candidateCount:number;message?:string;recommendations:{sourceIncidentId:string;incidentNumber:string;title:string;similarity:number;sourceType:string;rootCause?:string;correctiveAction:string;preventiveAction?:string;resolutionSummary?:string}[]}
 export interface PagedResult<T>{items:T[];total:number;page:number;pageSize:number;totalPages:number;todayTotal?:number}
 export interface AlertPagedResult extends PagedResult<AlertItem>{todayTotal:number}
 
@@ -36,6 +37,7 @@ export class OperationsService {
   incidents(archived=false){return this.http.get<Incident[]>(`${this.api}/incidents`,{params:{archived}})}
   incidentsPaged(filters:Record<string,string|number|boolean>){const q=new URLSearchParams();Object.entries(filters).forEach(([k,v])=>{if(v!==''&&v!==undefined)q.set(k,String(v))});return this.http.get<PagedResult<Incident>>(`${this.api}/incidents/paged?${q}`)}
   incident(id:string){return this.http.get<IncidentDetail>(`${this.api}/incidents/${id}`)}
+  resolutionRecommendations(id:string){return this.http.get<ResolutionRecommendation>(`${this.api}/ai/incidents/${id}/resolution-recommendations`)}
   createIncident(value:any){return this.http.post<Incident>(`${this.api}/incidents`,value)}
   updateIncident(id:string,value:any){return this.http.put<Incident>(`${this.api}/incidents/${id}`,value)}
   assign(id:string,userId:string){return this.http.post(`${this.api}/incidents/${id}/assign`,{userId})}

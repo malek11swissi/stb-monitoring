@@ -56,3 +56,18 @@ def test_evaluation_uses_an_independent_holdout_and_exposes_metrics():
         assert 0 <= metrics["rocAuc"] <= 1
         assert 0.15 <= metrics["decisionThreshold"] <= 0.70
         assert sum(metrics["confusionMatrix"].values()) == 1200
+
+
+def test_incident_resolution_recommends_the_most_similar_history():
+    app = create_app(testing=True)
+    body = {"incident":{"id":"1","title":"Timeout base MongoDB RNE","description":"connexion lente puis timeout","category":"Database","priority":"P1Critical","systemId":"rne","systemName":"RNE"},
+            "resolvedIncidents":[
+                {"id":"2","incidentNumber":"INC-002","title":"Timeout MongoDB RNE","description":"connexion base impossible timeout","category":"Database","priority":"P1Critical","systemId":"rne","systemName":"RNE","rootCause":"Pool saturé","correctiveAction":"Redémarrer le pool MongoDB","resolutionSummary":"Accès restauré"},
+                {"id":"3","incidentNumber":"INC-003","title":"Certificat SMS expiré","description":"erreur TLS","category":"Certificate","priority":"P3Medium","systemId":"sms","systemName":"SMS","rootCause":"Expiration","correctiveAction":"Renouveler le certificat"}]}
+    with app.test_client() as client:
+        response=client.post("/api/v1/predictions/incident-resolution",json=body)
+        result=response.get_json()
+    assert response.status_code==200
+    assert result["modelName"]=="tfidf-cosine-retrieval"
+    assert result["recommendations"][0]["incidentNumber"]=="INC-002"
+    assert result["recommendations"][0]["correctiveAction"]=="Redémarrer le pool MongoDB"

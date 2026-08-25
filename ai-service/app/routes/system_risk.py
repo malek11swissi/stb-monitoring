@@ -1,7 +1,18 @@
 from flask import Blueprint, jsonify, request
 from ..services.system_risk_service import predictor
+from ..services.incident_recommendation_service import incident_recommender
 
 system_risk_bp = Blueprint("system_risk", __name__)
+
+
+@system_risk_bp.post("/incident-resolution")
+def recommend_incident_resolution():
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get("incident"), dict):
+        return jsonify({"message": "incident est obligatoire."}), 400
+    if not isinstance(payload.get("resolvedIncidents", []), list):
+        return jsonify({"message": "resolvedIncidents doit être une liste."}), 400
+    return jsonify(incident_recommender.recommend(payload)), 200
 
 
 @system_risk_bp.get("/system-risk/evaluation")
