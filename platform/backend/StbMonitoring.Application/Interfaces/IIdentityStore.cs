@@ -8,6 +8,7 @@ public interface IIdentityStore
     Task<IReadOnlyCollection<AuditLog>> GetAuditLogsAsync(CancellationToken cancellationToken);
     Task<bool> UsernameOrEmailExistsAsync(string username, string email, Guid? excludedUserId, CancellationToken cancellationToken);
     Task<int> CountActiveAdminsAsync(CancellationToken cancellationToken);
+    Task<int> CountResolvedIncidentsAsync(Guid userId, CancellationToken cancellationToken);
     void AddUser(User user);
     void AddAudit(AuditLog auditLog);
     Task SaveChangesAsync(CancellationToken cancellationToken);

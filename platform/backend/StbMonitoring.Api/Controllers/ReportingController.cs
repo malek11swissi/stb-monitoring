@@ -8,7 +8,6 @@ using Microsoft.EntityFrameworkCore;
 using StbMonitoring.Domain.Constants;
 using StbMonitoring.Domain.Entities;
 using StbMonitoring.Infrastructure.Persistence;
-using StbMonitoring.Api.Reporting;
 
 namespace StbMonitoring.Api.Controllers;
 
@@ -81,18 +80,18 @@ public sealed class ReportingController(MonitoringDbContext db) : ControllerBase
         return File(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray(), "text/csv", $"rapport-incidents-{DateTime.UtcNow:yyyyMMdd-HHmm}.csv");
     }
 
-    [HttpGet("incidents.pdf"), Authorize(Policy = PermissionNames.ReportingExport)]
-    public async Task<IActionResult> ExportPdf([FromQuery]string period="custom",[FromQuery]DateTime? from=null,[FromQuery]DateTime? to=null,CancellationToken ct=default)
-    {var(start,end)=Period(period,from,to);var rows=await ReportRows(start,end,ct);return File(ReportFileBuilder.Pdf($"STB Sentinel — Rapport {PeriodLabel(period)} du {start:dd/MM/yyyy} au {end:dd/MM/yyyy}",rows),"application/pdf",$"rapport-{period}-{end:yyyyMMdd}.pdf");}
-
-    [HttpGet("incidents.xlsx"), Authorize(Policy = PermissionNames.ReportingExport)]
-    public async Task<IActionResult> ExportExcel([FromQuery]string period="custom",[FromQuery]DateTime? from=null,[FromQuery]DateTime? to=null,CancellationToken ct=default)
-    {var(start,end)=Period(period,from,to);var rows=await ReportRows(start,end,ct);return File(ReportFileBuilder.Xlsx(rows),"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",$"rapport-{period}-{end:yyyyMMdd}.xlsx");}
-
-    private async Task<IReadOnlyList<string[]>> ReportRows(DateTime start,DateTime end,CancellationToken ct)
-    {var q=db.Incidents.AsNoTracking().Where(x=>x.CreatedAt>=start&&x.CreatedAt<=end);if(User.IsInRole(RoleNames.Technician)){var actor=Actor();q=q.Where(x=>x.AssignedToUserId==actor);}return await q.OrderByDescending(x=>x.CreatedAt).Select(x=>new[]{x.IncidentNumber,x.Title,x.Priority.ToString(),x.Status.ToString(),x.CreatedAt.ToString("dd/MM/yyyy HH:mm"),x.ResolvedAt.HasValue?x.ResolvedAt.Value.ToString("dd/MM/yyyy HH:mm"):""}).ToArrayAsync(ct);}
-    private static(DateTime Start,DateTime End)Period(string period,DateTime? from,DateTime? to){var end=(to??DateTime.UtcNow).ToUniversalTime();return period.ToLowerInvariant() switch{"monthly"=>(new DateTime(end.Year,end.Month,1,0,0,0,DateTimeKind.Utc),end),"annual"=>(new DateTime(end.Year,1,1,0,0,0,DateTimeKind.Utc),end),_=>(from?.ToUniversalTime()??end.AddDays(-30),end)};}
-    private static string PeriodLabel(string period)=>period.ToLowerInvariant() switch{"monthly"=>"mensuel","annual"=>"annuel",_=>"personnalisé"};
+    // Angular consomme ces données métier puis construit localement le PDF et Excel stylés.
+    [HttpGet("incidents-data"), Authorize(Policy = PermissionNames.ReportingExport)]
+    public async Task<IActionResult> ExportData([FromQuery]DateTime? from=null,[FromQuery]DateTime? to=null,CancellationToken ct=default)
+    {
+        var end=(to??DateTime.UtcNow).ToUniversalTime();var start=(from??end.AddDays(-30)).ToUniversalTime();
+        var rows=await(from incident in db.Incidents.AsNoTracking()
+            join system in db.Systems.AsNoTracking() on incident.SystemId equals system.Id into systems from system in systems.DefaultIfEmpty()
+            join user in db.Users.AsNoTracking() on incident.AssignedToUserId equals user.Id into users from user in users.DefaultIfEmpty()
+            where incident.CreatedAt>=start&&incident.CreatedAt<=end orderby incident.CreatedAt descending
+            select new{incident.Id,incident.IncidentNumber,incident.Title,systemName=system==null?"Non renseigné":system.Name,priority=incident.Priority.ToString(),status=incident.Status.ToString(),slaStatus=incident.SlaStatus.ToString(),technician=user==null?"Non affecté":user.FirstName+" "+user.LastName,incident.CreatedAt,incident.ResolvedAt,incident.RootCause,incident.CorrectiveAction,incident.PreventiveAction,incident.ResolutionSummary,incident.ResolutionEvidence}).ToArrayAsync(ct);
+        return Ok(new{from=start,to=end,generatedAt=DateTime.UtcNow,incidents=rows});
+    }
 
     private Guid Actor() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private static Breakdown[] CountBy<T>(IEnumerable<T> values, Func<T, string> key) => values.GroupBy(key).Select(x => new Breakdown(x.Key, x.Count())).OrderByDescending(x => x.Count).ToArray();

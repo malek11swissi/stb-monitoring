@@ -12,6 +12,7 @@ public sealed class IdentityStore(MonitoringDbContext db) : IIdentityStore
     public async Task<IReadOnlyCollection<AuditLog>> GetAuditLogsAsync(CancellationToken ct)=>await db.AuditLogs.OrderByDescending(x=>x.CreatedAt).Take(500).ToArrayAsync(ct);
     public Task<bool> UsernameOrEmailExistsAsync(string username,string email,Guid? excluded,CancellationToken ct)=>db.Users.AnyAsync(x=>(!excluded.HasValue||x.Id!=excluded)&&(x.Username.ToLower()==username.Trim().ToLower()||x.Email==email.Trim().ToLower()),ct);
     public Task<int> CountActiveAdminsAsync(CancellationToken ct)=>db.Users.CountAsync(x=>x.IsActive&&x.Role==StbMonitoring.Domain.Constants.RoleNames.Admin,ct);
+    public Task<int> CountResolvedIncidentsAsync(Guid userId,CancellationToken ct)=>db.Incidents.CountAsync(x=>x.AssignedToUserId==userId&&x.ResolvedAt!=null,ct);
     public void AddUser(User x)=>db.Users.Add(x); public void AddAudit(AuditLog x)=>db.AuditLogs.Add(x);
     public async Task SaveChangesAsync(CancellationToken ct)=>await db.SaveChangesAsync(ct);
 }

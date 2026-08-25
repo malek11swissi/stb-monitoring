@@ -21,7 +21,8 @@ public static class PermissionNames
         IncidentsArchive => [RoleNames.Admin,RoleNames.Supervisor],
         SystemsManage or ChecksExecute or AlertsAcknowledge or IncidentsManage or IncidentsAssign or IncidentsClose or MaintenanceManage => [RoleNames.Admin, RoleNames.Supervisor],
         IncidentsWork or IncidentsResolve => [RoleNames.Admin, RoleNames.Supervisor, RoleNames.Technician],
-        SystemsRead or ChecksRead or IncidentsRead or NotificationsRead or ReportingRead or ReportingExport or MaintenanceRead => RoleNames.All,
+        ReportingExport => [RoleNames.ManagerIt],
+        SystemsRead or ChecksRead or IncidentsRead or NotificationsRead or ReportingRead or MaintenanceRead => RoleNames.All,
         AlertsRead => [RoleNames.Admin, RoleNames.Supervisor, RoleNames.ManagerIt],
         _ => [RoleNames.Admin]
     };

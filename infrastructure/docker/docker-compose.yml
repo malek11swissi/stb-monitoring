@@ -1,4 +1,19 @@
 services:
+  ai-service:
+    build:
+      context: ../../ai-service
+    container_name: stb-sentinel-ai
+    ports:
+      - "5055:5055"
+    volumes:
+      - ../../ai-service/models:/app/models:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5055/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+
   postgres:
     image: postgres:16-alpine
     container_name: stb-monitoring-postgres

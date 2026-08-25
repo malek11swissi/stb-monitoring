@@ -14,6 +14,7 @@ using StbMonitoring.Infrastructure.Persistence;
 using StbMonitoring.Infrastructure.Monitoring;
 using StbMonitoring.Api.Workers;
 using StbMonitoring.Infrastructure.Notifications;
+using StbMonitoring.Infrastructure.AI;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers().AddJsonOptions(options =>
@@ -25,7 +26,15 @@ builder.Services.AddScoped<IIdentityStore,IdentityStore>(); builder.Services.Add
 builder.Services.AddScoped<IAuthService,AuthService>(); builder.Services.AddScoped<IUserService,UserService>(); builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddScoped<IMonitoringStore,MonitoringStore>();builder.Services.AddScoped<IMonitoringService,MonitoringService>();builder.Services.AddScoped<IOperationsStore,OperationsStore>();builder.Services.AddScoped<IOperationsService,OperationsService>();builder.Services.AddScoped<ICheckExecutor,HttpCheckExecutor>();builder.Services.AddScoped<ICheckExecutor,ApiJsonCheckExecutor>();builder.Services.AddScoped<ICheckExecutor,TlsCheckExecutor>();builder.Services.AddHostedService<MonitoringWorker>();builder.Services.AddHostedService<SlaWorker>();builder.Services.AddHostedService<AuditCleanupWorker>();
 builder.Services.AddHttpClient<INotificationChannel,ApiNotificationChannel>(client => client.Timeout = TimeSpan.FromSeconds(15));
+builder.Services.AddHttpClient();
 builder.Services.AddScoped<IIncidentNotificationDispatcher,IncidentNotificationDispatcher>();
+builder.Services.Configure<AiOptions>(builder.Configuration.GetSection(AiOptions.Section));
+builder.Services.AddHttpClient<IAiPredictionService,AiPredictionService>((services,client)=>
+{
+    var options=services.GetRequiredService<Microsoft.Extensions.Options.IOptions<AiOptions>>().Value;
+    client.BaseAddress=new Uri(options.BaseUrl.TrimEnd('/')+"/");
+    client.Timeout=TimeSpan.FromSeconds(Math.Clamp(options.TimeoutSeconds,2,60));
+});
 builder.Services.AddHostedService<IncidentEscalationWorker>();
 var jwt=builder.Configuration.GetSection("Jwt");var key=jwt["Key"]??throw new InvalidOperationException("Jwt:Key absent.");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o=>o.TokenValidationParameters=new(){ValidateIssuer=true,ValidateAudience=true,ValidateLifetime=true,ValidateIssuerSigningKey=true,ValidIssuer=jwt["Issuer"],ValidAudience=jwt["Audience"],IssuerSigningKey=new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),ClockSkew=TimeSpan.FromMinutes(1)});
@@ -56,6 +65,7 @@ builder.Services.AddExceptionHandler<ApiExceptionHandler>(); builder.Services.Ad
 var app=builder.Build();
 if(app.Environment.IsDevelopment()){app.UseSwagger();app.UseSwaggerUI();}
 app.UseExceptionHandler();
+app.UseStaticFiles();
 if (!app.Environment.IsDevelopment()) app.UseHttpsRedirection();
 app.UseCors("Frontend");app.UseAuthentication();app.UseAuthorization();app.MapControllers();app.MapGet("/health",()=>Results.Ok(new{status="UP",service="stb-monitoring-api"}));
 using(var scope=app.Services.CreateScope()){await scope.ServiceProvider.GetRequiredService<DatabaseSeeder>().SeedAsync();}

@@ -2,7 +2,7 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
-export interface User { id:string; username:string; email:string; firstName:string; lastName:string; role:string; roles?:string[]; isActive:boolean; createdAt:string; lastLoginAt?:string; }
+export interface User { id:string; username:string; email:string; firstName:string; lastName:string; role:string; roles?:string[]; isActive:boolean; createdAt:string; lastLoginAt?:string; avatarUrl?:string; skills:string[]; badge:string; resolvedIncidents:number; }
 interface LoginResponse { token:string; expiresAt:string; user:User; }
 @Injectable({providedIn:'root'})
 export class AuthService {
@@ -24,7 +24,7 @@ export class AuthService {
       'checks.execute':['SUPERVISOR'],'alerts.acknowledge':['SUPERVISOR'],'incidents.manage':['SUPERVISOR'],
       'incidents.assign':['SUPERVISOR'],'incidents.work':['SUPERVISOR','TECHNICIAN'],
       'incidents.resolve':['SUPERVISOR','TECHNICIAN'],'incidents.close':['SUPERVISOR'],
-      'reporting.read':['SUPERVISOR','TECHNICIAN','MANAGER_IT'],'reporting.export':['SUPERVISOR','TECHNICIAN','MANAGER_IT']
+      'reporting.read':['SUPERVISOR','TECHNICIAN','MANAGER_IT'],'reporting.export':['MANAGER_IT']
     };
     return access[permission]?.includes(role)??false;
   }

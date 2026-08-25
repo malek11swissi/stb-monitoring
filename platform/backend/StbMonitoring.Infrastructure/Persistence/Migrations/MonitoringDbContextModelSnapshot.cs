@@ -516,37 +516,6 @@ namespace StbMonitoring.Infrastructure.Persistence.Migrations
                     b.ToTable("incident_comments", (string)null);
                 });
 
-            modelBuilder.Entity("StbMonitoring.Domain.Entities.IncidentEscalation", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("IncidentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("LastResult")
-                        .HasColumnType("text");
-
-                    b.Property<int>("Level")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("NextEscalationAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IncidentId")
-                        .IsUnique();
-
-                    b.HasIndex("CompletedAt", "NextEscalationAt");
-
-                    b.ToTable("incident_escalations", (string)null);
-                });
-
             modelBuilder.Entity("StbMonitoring.Domain.Entities.IncidentHistory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -828,39 +797,6 @@ namespace StbMonitoring.Infrastructure.Persistence.Migrations
                     b.ToTable("notifications", (string)null);
                 });
 
-            modelBuilder.Entity("StbMonitoring.Domain.Entities.SavedView", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("FiltersJson")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
-
-                    b.Property<string>("Scope")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId", "Scope");
-
-                    b.ToTable("saved_views", (string)null);
-                });
-
             modelBuilder.Entity("StbMonitoring.Domain.Entities.SlaPolicy", b =>
                 {
                     b.Property<Guid>("Id")
@@ -911,17 +847,30 @@ namespace StbMonitoring.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AvatarPath")
+                        .HasMaxLength(260)
+                        .HasColumnType("character varying(260)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("CriticalNotificationsOnly")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(180)
                         .HasColumnType("character varying(180)");
 
+                    b.Property<bool>("EmailNotificationsEnabled")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<bool>("InAppNotificationsEnabled")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -937,10 +886,28 @@ namespace StbMonitoring.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("PasswordResetExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PasswordResetTokenHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("text");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Skills")
+                        .IsRequired()
+                        .HasMaxLength(800)
+                        .HasColumnType("character varying(800)");
+
+                    b.Property<bool>("SmsNotificationsEnabled")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Username")
                         .IsRequired()
@@ -958,34 +925,6 @@ namespace StbMonitoring.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("users", (string)null);
-                });
-
-            modelBuilder.Entity("StbMonitoring.Domain.Entities.UserNotificationPreference", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("CriticalOnly")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("EmailEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("EscalationDelayMinutes")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("InAppEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("PhoneNumber")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("SmsEnabled")
-                        .HasColumnType("boolean");
-
-                    b.HasKey("UserId");
-
-                    b.ToTable("user_notification_preferences", (string)null);
                 });
 
             modelBuilder.Entity("StbMonitoring.Domain.Entities.Alert", b =>
@@ -1075,15 +1014,6 @@ namespace StbMonitoring.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("StbMonitoring.Domain.Entities.IncidentEscalation", b =>
-                {
-                    b.HasOne("StbMonitoring.Domain.Entities.Incident", null)
-                        .WithMany()
-                        .HasForeignKey("IncidentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("StbMonitoring.Domain.Entities.IncidentHistory", b =>
                 {
                     b.HasOne("StbMonitoring.Domain.Entities.Incident", null)
@@ -1128,24 +1058,6 @@ namespace StbMonitoring.Infrastructure.Persistence.Migrations
                     b.HasOne("StbMonitoring.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("StbMonitoring.Domain.Entities.SavedView", b =>
-                {
-                    b.HasOne("StbMonitoring.Domain.Entities.User", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("StbMonitoring.Domain.Entities.UserNotificationPreference", b =>
-                {
-                    b.HasOne("StbMonitoring.Domain.Entities.User", null)
-                        .WithOne()
-                        .HasForeignKey("StbMonitoring.Domain.Entities.UserNotificationPreference", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

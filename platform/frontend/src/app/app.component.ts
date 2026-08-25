@@ -17,4 +17,5 @@ export class AppComponent {
   constructor(public auth:AuthService,private router:Router){}
   logout(){this.auth.logout();this.router.navigate(['/login']);}
   closeSidebar(){this.sidebarOpen=false;}
+  avatar(user:{avatarUrl?:string}){return user.avatarUrl?`http://localhost:5041${user.avatarUrl}`:'/default-avatar.svg';}
 }

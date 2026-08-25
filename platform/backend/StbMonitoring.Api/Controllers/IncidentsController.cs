@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using StbMonitoring.Application.Contracts;
 using StbMonitoring.Application.Interfaces;
 using StbMonitoring.Domain.Constants;
+using StbMonitoring.Domain.Entities;
 
 namespace StbMonitoring.Api.Controllers;
 
@@ -21,6 +22,10 @@ public sealed class IncidentsController(IOperationsService service,StbMonitoring
             ? incidents.Where(x => x.AssignedToUserId == Actor())
             : incidents);
     }
+
+    [HttpGet("paged"),Authorize(Policy=PermissionNames.IncidentsRead)]
+    public async Task<IActionResult>Paged([FromQuery]int page=1,[FromQuery]int pageSize=15,[FromQuery]string? search=null,[FromQuery]IncidentStatus? status=null,[FromQuery]IncidentPriority? priority=null,[FromQuery]SlaStatus? sla=null,[FromQuery]string? assignment=null,[FromQuery]bool archived=false,CancellationToken ct=default)
+    {page=Math.Max(1,page);pageSize=Math.Clamp(pageSize,10,100);var q=db.Incidents.AsNoTracking().Where(x=>x.IsArchived==archived);if(User.IsInRole(RoleNames.Technician)){var actor=Actor();q=q.Where(x=>x.AssignedToUserId==actor);}var today=DateTime.UtcNow.Date;var todayTotal=await q.CountAsync(x=>x.CreatedAt>=today,ct);if(!string.IsNullOrWhiteSpace(search)){var s=search.Trim().ToLower();q=q.Where(x=>x.IncidentNumber.ToLower().Contains(s)||x.Title.ToLower().Contains(s));}if(status.HasValue)q=q.Where(x=>x.Status==status);if(priority.HasValue)q=q.Where(x=>x.Priority==priority);if(sla.HasValue)q=q.Where(x=>x.SlaStatus==sla);if(assignment=="assigned")q=q.Where(x=>x.AssignedToUserId!=null);if(assignment=="unassigned")q=q.Where(x=>x.AssignedToUserId==null);var total=await q.CountAsync(ct);var ids=await q.OrderByDescending(x=>x.CreatedAt).Skip((page-1)*pageSize).Take(pageSize).Select(x=>x.Id).ToArrayAsync(ct);var all=await service.IncidentsAsync(ct);var items=ids.Select(id=>all.Single(x=>x.Id==id)).ToArray();return Ok(new{items,total,todayTotal,page,pageSize,totalPages=(int)Math.Ceiling(total/(double)pageSize)});}
 
     [HttpGet("{id:guid}"), Authorize(Policy = PermissionNames.IncidentsRead)]
     public async Task<IActionResult> One(Guid id, CancellationToken ct)

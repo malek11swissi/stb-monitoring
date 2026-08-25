@@ -1,0 +1,7 @@
+timestamp,system_id,criticality,endpoint_id,is_critical,duration_ms,down_threshold_ms,status,success,http_status_code,error_type,active_alert_count,critical_alert_count,open_incident_count,high_priority_incident_count,maintenance_active
+2026-08-01T10:00:00Z,RNE,Critical,RNE-API,true,180,3000,Up,true,200,,0,0,0,0,false
+2026-08-01T10:05:00Z,RNE,Critical,RNE-API,true,210,3000,Up,true,200,,0,0,0,0,false
+2026-08-01T10:10:00Z,RNE,Critical,RNE-API,true,600,3000,Up,true,200,,0,0,0,0,false
+2026-08-01T10:15:00Z,RNE,Critical,RNE-API,true,1400,3000,Degraded,true,200,,1,0,0,0,false
+2026-08-01T10:20:00Z,RNE,Critical,RNE-API,true,3100,3000,Down,false,504,TIMEOUT,1,1,1,1,false
+

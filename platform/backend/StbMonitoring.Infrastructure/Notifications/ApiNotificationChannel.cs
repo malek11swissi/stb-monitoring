@@ -15,7 +15,7 @@ public sealed class ApiNotificationChannel(HttpClient client, IConfiguration con
 {
     public object Status() => new
     {
-        email = new { provider = "Brevo", mode = Mode("Email"), configured = Configured("Email", "ApiKey") },
+        email = new { provider = "Brevo", mode = Mode("Email"), configured = Configured("Email", "ApiKey") && Configured("Email", "SenderEmail") },
         sms = new { provider = "Twilio", mode = Mode("Sms"), configured = Configured("Sms", "AccountSid") && Configured("Sms", "AuthToken") && Configured("Sms", "FromNumber") }
     };
 
@@ -25,9 +25,10 @@ public sealed class ApiNotificationChannel(HttpClient client, IConfiguration con
         // qu'un fournisseur réel : le reste de l'application ne change pas.
         if (Mode("Email") == "Simulation") return new(true, "SIMULATION", "SENT", $"EMAIL-{Guid.NewGuid():N}", null);
         var apiKey = Required("Email", "ApiKey"); var senderEmail = Required("Email", "SenderEmail");
-        var payload = JsonSerializer.Serialize(new { sender = new { name = configuration["Notifications:Email:SenderName"] ?? "STB Sentinel", email = senderEmail }, to = new[] { new { email = recipient } }, subject, htmlContent });
+        var senderName=configuration["Notifications:Email:SenderName"]??"STB Sentinel";
+        var payload = JsonSerializer.Serialize(new { sender=new{name=senderName,email=senderEmail},to=new[]{new{email=recipient}},subject,htmlContent });
         using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.brevo.com/v3/smtp/email");
-        request.Headers.Add("api-key", apiKey); request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+        request.Headers.Add("api-key",apiKey);request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
         return await SendAsync(request, "BREVO", ct);
     }
 
@@ -37,7 +38,9 @@ public sealed class ApiNotificationChannel(HttpClient client, IConfiguration con
         var sid = Required("Sms", "AccountSid"); var token = Required("Sms", "AuthToken"); var from = Required("Sms", "FromNumber");
         using var request = new HttpRequestMessage(HttpMethod.Post, $"https://api.twilio.com/2010-04-01/Accounts/{Uri.EscapeDataString(sid)}/Messages.json");
         request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{sid}:{token}")));
-        request.Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["To"] = recipient, ["From"] = from, ["Body"] = message });
+        var trialMode=bool.TryParse(configuration["Notifications:Sms:TrialMode"],out var trial)&&trial;
+        var body=trialMode?configuration["Notifications:Sms:TrialTemplate"]??"sms_internal_alerts":message;
+        request.Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["To"] = recipient, ["From"] = from, ["Body"] = body });
         return await SendAsync(request, "TWILIO", ct);
     }
 
@@ -47,7 +50,7 @@ public sealed class ApiNotificationChannel(HttpClient client, IConfiguration con
         {
             using var response = await client.SendAsync(request, ct);
             var body = await response.Content.ReadAsStringAsync(ct); string? externalId = null; string? status = null;
-            try { using var json = JsonDocument.Parse(body); if (json.RootElement.TryGetProperty("sid", out var sid)) externalId = sid.GetString(); else if (json.RootElement.TryGetProperty("messageId", out var id)) externalId = id.GetString(); if (json.RootElement.TryGetProperty("status", out var state)) status = state.GetString(); } catch (JsonException) { }
+            try { using var json = JsonDocument.Parse(body); if (json.RootElement.TryGetProperty("sid", out var sid)) externalId = sid.GetString(); else if (json.RootElement.TryGetProperty("messageId", out var messageId)) externalId = messageId.GetString(); else if(json.RootElement.TryGetProperty("id",out var id))externalId=id.GetString(); if (json.RootElement.TryGetProperty("status", out var state)) status = state.GetString(); } catch (JsonException) { }
             return response.IsSuccessStatusCode ? new(true, provider, (status ?? "ACCEPTED").ToUpperInvariant(), externalId, null) : new(false, provider, "FAILED", externalId, $"HTTP {(int)response.StatusCode}: {body}");
         }
         catch (Exception ex) when (ex is not OperationCanceledException) { return new(false, provider, "FAILED", null, ex.Message); }

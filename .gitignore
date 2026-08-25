@@ -332,6 +332,8 @@ paket-files/
 # Python Tools for Visual Studio (PTVS)
 __pycache__/
 *.pyc
+.venv/
+.pytest_cache/
 
 # Cake - Uncomment if you are using it
 # tools/**
@@ -493,3 +495,11 @@ $RECYCLE.BIN/
 node_modules/
 .angular/
 dist/
+
+# Données STB et modèles IA générés (potentiellement sensibles ou volumineux)
+ai-service/data/raw/*
+!ai-service/data/raw/stb_check_history.example.csv
+ai-service/data/processed/*
+!ai-service/data/processed/.gitkeep
+ai-service/models/*
+!ai-service/models/.gitkeep
