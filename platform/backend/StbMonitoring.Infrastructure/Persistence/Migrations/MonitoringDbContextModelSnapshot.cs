@@ -875,6 +875,10 @@ namespace StbMonitoring.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("JobTitle")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
                     b.Property<DateTime?>("LastLoginAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -894,12 +898,16 @@ namespace StbMonitoring.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(128)");
 
                     b.Property<string>("PhoneNumber")
-                        .HasColumnType("text");
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
 
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
+
+                    b.Property<int>("SessionVersion")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Skills")
                         .IsRequired()
@@ -908,6 +916,20 @@ namespace StbMonitoring.Infrastructure.Persistence.Migrations
 
                     b.Property<bool>("SmsNotificationsEnabled")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("TwoFactorChallengeHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("TwoFactorCodeHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("TwoFactorExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("TwoFactorFailedAttempts")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Username")
                         .IsRequired()

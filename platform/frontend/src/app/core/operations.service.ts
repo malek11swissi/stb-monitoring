@@ -6,7 +6,9 @@ import { from } from 'rxjs';
 export interface AlertItem { id:string;alertNumber:string;systemId:string;systemName:string;endpointId:string;endpointName:string;type:string;title:string;description:string;severity:string;status:string;occurrenceCount:number;firstDetectedAt:string;lastDetectedAt:string;acknowledgedAt?:string;resolvedAt?:string;incidentId?:string;lastError?:string }
 export interface AlertRule { id:string;name:string;description:string;eventType:string;severity:string;consecutiveFailures:number;deduplicationMinutes:number;autoResolve:boolean;notifyInApp:boolean;isActive:boolean;systemId?:string;endpointId?:string }
 export interface Incident { id:string;incidentNumber:string;alertId?:string;systemId?:string;endpointId?:string;systemName?:string;title:string;description:string;category:string;priority:string;status:string;slaStatus:string;assignedToUserId?:string;assignedToName?:string;responseDueAt?:string;resolutionDueAt?:string;resolvedAt?:string;resolutionSummary?:string;rootCause?:string;correctiveAction?:string;preventiveAction?:string;resolutionEvidence?:string;cancellationReason?:string;cancelledAt?:string;isArchived:boolean;archivedAt?:string;archivedByUserId?:string;reopenCount:number;createdAt:string;updatedAt:string }
-export interface IncidentDetail { incident:Incident;comments:{id:string;userName:string;content:string;commentType:string;isInternal:boolean;createdAt:string}[];history:{id:string;action:string;oldValue?:string;newValue?:string;details?:string;createdAt:string}[] }
+export interface IncidentDetail { incident:Incident;comments:{id:string;userId:string;userName:string;userAvatarUrl?:string;content:string;commentType:string;isInternal:boolean;createdAt:string}[];history:{id:string;action:string;oldValue?:string;newValue?:string;details?:string;createdAt:string}[] }
+export interface IncidentTimelineItem {id:string;kind:'comment'|'history';userId?:string;userName:string;userAvatarUrl?:string;title:string;content?:string;oldValue?:string;newValue?:string;createdAt:string}
+export interface IncidentAssignee {id:string;firstName:string;lastName:string;role:string;avatarPath?:string}
 export interface NotificationItem { id:string;type:string;title:string;message:string;severity:string;entityType?:string;entityId?:string;actionUrl?:string;isRead:boolean;createdAt:string }
 export interface OperationsSummary { openAlerts:number;criticalAlerts:number;openIncidents:number;unassignedIncidents:number;slaBreached:number;unreadNotifications:number }
 export interface AlertDetail { alert:AlertItem;occurrences:{id:string;checkResultId:string;status:string;errorType?:string;errorMessage?:string;detectedAt:string}[] }
@@ -30,6 +32,7 @@ export class OperationsService {
   ack(id:string){return this.http.post<void>(`${this.api}/alerts/${id}/acknowledge`,{})}
   resolveAlert(id:string){return this.http.post<void>(`${this.api}/alerts/${id}/resolve`,{})}
   closeAlert(id:string){return this.http.post<void>(`${this.api}/alerts/${id}/close`,{})}
+  createIncidentFromAlert(id:string){return this.http.post<Incident>(`${this.api}/alerts/${id}/incident`,{})}
   rules(){return this.http.get<AlertRule[]>(`${this.api}/alert-rules`)}
   saveRule(rule:any,id?:string){return id?this.http.put(`${this.api}/alert-rules/${id}`,rule):this.http.post(`${this.api}/alert-rules`,rule)}
   ruleActive(id:string,value:boolean){return this.http.patch(`${this.api}/alert-rules/${id}/active?value=${value}`,{})}
@@ -37,8 +40,10 @@ export class OperationsService {
   incidents(archived=false){return this.http.get<Incident[]>(`${this.api}/incidents`,{params:{archived}})}
   incidentsPaged(filters:Record<string,string|number|boolean>){const q=new URLSearchParams();Object.entries(filters).forEach(([k,v])=>{if(v!==''&&v!==undefined)q.set(k,String(v))});return this.http.get<PagedResult<Incident>>(`${this.api}/incidents/paged?${q}`)}
   incident(id:string){return this.http.get<IncidentDetail>(`${this.api}/incidents/${id}`)}
+  incidentTimeline(id:string){return this.http.get<IncidentTimelineItem[]>(`${this.api}/incidents/${id}/timeline`)}
+  technicians(){return this.http.get<IncidentAssignee[]>(`${this.api}/users/technicians`)}
   resolutionRecommendations(id:string){return this.http.get<ResolutionRecommendation>(`${this.api}/ai/incidents/${id}/resolution-recommendations`)}
-  createIncident(value:any){return this.http.post<Incident>(`${this.api}/incidents`,value)}
+  createIncident(value:any){return this.createIncidentFromAlert(value.alertId)}
   updateIncident(id:string,value:any){return this.http.put<Incident>(`${this.api}/incidents/${id}`,value)}
   assign(id:string,userId:string){return this.http.post(`${this.api}/incidents/${id}/assign`,{userId})}
   action(id:string,action:string,body:any={}){return this.http.post(`${this.api}/incidents/${id}/${action}`,body)}
@@ -47,6 +52,7 @@ export class OperationsService {
   attachments(id:string){return this.http.get<IncidentAttachment[]>(`${this.api}/incidents/${id}/attachments`)}
   uploadAttachment(id:string,file:File,proof:boolean){const form=new FormData();form.append('file',file);form.append('isResolutionProof',String(proof));return this.http.post<IncidentAttachment>(`${this.api}/incidents/${id}/attachments`,form)}
   downloadAttachment(id:string){return this.http.get(`${this.api}/incidents/attachments/${id}/download`,{responseType:'blob'})}
+  deleteAttachment(id:string){return this.http.delete(`${this.api}/incidents/attachments/${id}`)}
   slas(){return this.http.get<SlaPolicy[]>(`${this.api}/sla-policies`)}
   saveSla(value:any,id?:string){return id?this.http.put<SlaPolicy>(`${this.api}/sla-policies/${id}`,value):this.http.post<SlaPolicy>(`${this.api}/sla-policies`,value)}
   slaActive(id:string,value:boolean){return this.http.patch(`${this.api}/sla-policies/${id}/active?value=${value}`,{})}

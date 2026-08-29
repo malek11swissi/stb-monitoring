@@ -21,13 +21,21 @@ public sealed class CompanyRepository
         companies = database.GetCollection<Company>(settings.CompaniesCollection);
     }
 
+
+    // verifier database down ou up 
     public async Task<bool> IsAvailableAsync(CancellationToken ct)
     {
         try { await database.RunCommandAsync<BsonDocument>(new BsonDocument("ping", 1), cancellationToken: ct); return true; }
         catch (Exception) when (!ct.IsCancellationRequested) { return false; }
     }
 
-    public async Task<Company?> FindAsync(string matricule, CancellationToken ct) => await companies.Find(x => x.MatriculeFiscal == matricule.ToUpperInvariant()).FirstOrDefaultAsync(ct);
+        //Recherche une entreprise par matricule fiscal
+    public async Task<Company?> FindAsync(string matricule, CancellationToken ct) => 
+    
+        await companies.Find(x => x.MatriculeFiscal == matricule.ToUpperInvariant()).FirstOrDefaultAsync(ct);
+
+
+    //Recherche plusieurs entreprises selon denomination et  gouvernorat
 
     public async Task<IReadOnlyCollection<Company>> SearchAsync(string? denomination, string? gouvernorat, CancellationToken ct)
     {
@@ -37,8 +45,9 @@ public sealed class CompanyRepository
         return await companies.Find(filter).SortBy(x => x.Denomination).ToListAsync(ct);
     }
 
+     //add 3 companies 
     public async Task SeedAsync(CancellationToken ct)
-    {
+    { // >0 : Cela évite de recréer les mêmes entreprises à chaque redémarrage. 
         if (await companies.EstimatedDocumentCountAsync(cancellationToken: ct) > 0) return;
         await companies.InsertManyAsync(new[]
         {
@@ -48,5 +57,7 @@ public sealed class CompanyRepository
         }, cancellationToken: ct);
     }
 
-    private static Company New(string id, string name, string sigle, string forme, string situation, string gouvernorat, int year, int month, int day, string activity) => new() { MatriculeFiscal = id, Denomination = name, Sigle = sigle, FormeJuridique = forme, SituationJuridique = situation, Gouvernorat = gouvernorat, DateImmatriculation = new DateTime(year, month, day, 0, 0, 0, DateTimeKind.Utc), CodeActivite = activity };
+    private static Company New(string id, string name, 
+    string sigle, string forme, string situation, string gouvernorat, 
+    int year, int month, int day, string activity) => new() { MatriculeFiscal = id, Denomination = name, Sigle = sigle, FormeJuridique = forme, SituationJuridique = situation, Gouvernorat = gouvernorat, DateImmatriculation = new DateTime(year, month, day, 0, 0, 0, DateTimeKind.Utc), CodeActivite = activity };
 }

@@ -12,7 +12,7 @@ public sealed class JwtTokenService(IConfiguration config) : ITokenService
     {
         var expires=DateTime.UtcNow.AddMinutes(config.GetValue("Jwt:ExpirationMinutes",60));
         var claims=new List<Claim>{new(JwtRegisteredClaimNames.Sub,u.Id.ToString()),new(ClaimTypes.NameIdentifier,u.Id.ToString()),new(ClaimTypes.Name,u.Username),new(ClaimTypes.Email,u.Email)};
-        claims.Add(new Claim(ClaimTypes.Role,u.Role));
+        claims.Add(new Claim(ClaimTypes.Role,u.Role));claims.Add(new Claim("session_version",u.SessionVersion.ToString()));
         var key=new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["Jwt:Key"]!));var token=new JwtSecurityToken(config["Jwt:Issuer"],config["Jwt:Audience"],claims,expires:expires,signingCredentials:new(key,SecurityAlgorithms.HmacSha256));
         return new(new JwtSecurityTokenHandler().WriteToken(token),expires);
     }

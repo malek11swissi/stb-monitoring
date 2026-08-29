@@ -36,10 +36,6 @@ public sealed class IncidentsController(IOperationsService service,StbMonitoring
         return Ok(incident);
     }
 
-    [HttpPost, Authorize(Policy = PermissionNames.IncidentsManage)]
-    public async Task<IActionResult> Create(CreateIncidentRequest request, CancellationToken ct) =>
-        Ok(await service.CreateIncidentAsync(request, Actor(), ct));
-
     [HttpPut("{id:guid}"), Authorize(Policy = PermissionNames.IncidentsManage)]
     public async Task<IActionResult> Update(Guid id, UpdateIncidentRequest request, CancellationToken ct) =>
         Ok(await service.UpdateIncidentAsync(id, request, Actor(), ct));
@@ -80,20 +76,51 @@ public sealed class IncidentsController(IOperationsService service,StbMonitoring
     [HttpDelete("{id:guid}"),Authorize(Policy=PermissionNames.IncidentsDelete)]
     public async Task<IActionResult> Delete(Guid id,[FromBody]IncidentActionReasonRequest request,CancellationToken ct){await service.DeleteIncidentAsync(id,request.Reason,Actor(),ct);return NoContent();}
 
-    [HttpPost("{id:guid}/comments"), Authorize(Policy = PermissionNames.IncidentsWork), Authorize(Roles = RoleNames.Technician)]
+    [HttpPost("{id:guid}/comments"), Authorize(Roles = RoleNames.Supervisor+","+RoleNames.Technician+","+RoleNames.ManagerIt)]
     public async Task<IActionResult> Comment(Guid id, AddCommentRequest request, CancellationToken ct)
     { if (await TechnicianAccess(id, ct) is { } denied) return denied; await service.CommentAsync(id, request, Actor(), ct); return NoContent(); }
+
+    [HttpGet("{id:guid}/timeline"),Authorize(Policy=PermissionNames.IncidentsRead)]
+    public async Task<IActionResult> Timeline(Guid id,CancellationToken ct)
+    {
+        if(await TechnicianAccess(id,ct)is{}denied)return denied;
+        var comments=await (from c in db.IncidentComments.AsNoTracking() join u in db.Users.AsNoTracking() on c.UserId equals u.Id where c.IncidentId==id select new IncidentTimelineItemResponse(c.Id,"comment",c.UserId,u.FirstName+" "+u.LastName,string.IsNullOrEmpty(u.AvatarPath)?null:"/"+u.AvatarPath.Replace("\\","/").TrimStart('/'),"Commentaire",c.Content,null,null,c.CreatedAt)).ToArrayAsync(ct);
+        var history=await (from h in db.IncidentHistories.AsNoTracking() join u0 in db.Users.AsNoTracking() on h.UserId equals u0.Id into users from u in users.DefaultIfEmpty() where h.IncidentId==id select new IncidentTimelineItemResponse(h.Id,"history",h.UserId,u==null?"STB Sentinel":u.FirstName+" "+u.LastName,u==null||string.IsNullOrEmpty(u.AvatarPath)?null:"/"+u.AvatarPath.Replace("\\","/").TrimStart('/'),h.Action,h.Details,h.OldValue,h.NewValue,h.CreatedAt)).ToArrayAsync(ct);
+        // Les commentaires ont leur propre section. La chronologie ne contient
+        // que les changements métier afin d'éviter une double représentation.
+        return Ok(history.OrderByDescending(x=>x.CreatedAt));
+    }
 
     [HttpGet("{id:guid}/attachments"), Authorize(Policy = PermissionNames.IncidentsRead)]
     public async Task<IActionResult> Attachments(Guid id,CancellationToken ct){if(await TechnicianAccess(id,ct)is{}denied)return denied;return Ok(await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToArrayAsync(db.IncidentAttachments.AsNoTracking().Where(x=>x.IncidentId==id).OrderByDescending(x=>x.CreatedAt).Select(x=>new{x.Id,x.FileName,x.ContentType,size=x.Content.LongLength,x.IsResolutionProof,x.CreatedAt}),ct));}
     [HttpPost("{id:guid}/attachments"),Authorize(Policy=PermissionNames.IncidentsWork),Authorize(Roles=RoleNames.Technician),RequestSizeLimit(10_485_760)]
-    public async Task<IActionResult> Upload(Guid id,IFormFile file,[FromForm]bool isResolutionProof,CancellationToken ct){if(await TechnicianAccess(id,ct)is{}denied)return denied;if(file.Length is 0 or >10_485_760)return BadRequest(new{message="Fichier vide ou supérieur à 10 Mo."});await using var ms=new MemoryStream();await file.CopyToAsync(ms,ct);var x=new StbMonitoring.Domain.Entities.IncidentAttachment(id,Actor(),file.FileName,file.ContentType,ms.ToArray(),isResolutionProof);db.Add(x);await db.SaveChangesAsync(ct);return Ok(new{x.Id,x.FileName,x.ContentType,size=x.Content.LongLength,x.IsResolutionProof,x.CreatedAt});}
+    public async Task<IActionResult> Upload(Guid id,IFormFile file,[FromForm]bool isResolutionProof,CancellationToken ct)
+    {
+        if(await TechnicianAccess(id,ct)is{}denied)return denied;
+        if(file.Length is 0 or >10_485_760)return BadRequest(new{message="Fichier vide ou supérieur à 10 Mo."});
+        var safeName=Path.GetFileName(file.FileName);if(string.IsNullOrWhiteSpace(safeName)||safeName.Length>180)return BadRequest(new{message="Nom de fichier invalide ou trop long."});
+        await using var ms=new MemoryStream();await file.CopyToAsync(ms,ct);var content=ms.ToArray();
+        var validation=ValidateAttachment(safeName,file.ContentType,content);if(!validation.Valid)return BadRequest(new{message=validation.Error});
+        var x=new IncidentAttachment(id,Actor(),safeName,validation.ContentType,content,isResolutionProof);db.Add(x);db.AuditLogs.Add(new(Actor(),"INCIDENT_ATTACHMENT_ADDED","Incident",id,$"{safeName}; {content.Length} octets; preuve={isResolutionProof}",HttpContext.Connection.RemoteIpAddress?.ToString()));await db.SaveChangesAsync(ct);return Ok(new{x.Id,x.FileName,x.ContentType,size=x.Content.LongLength,x.IsResolutionProof,x.CreatedAt});
+    }
     [HttpGet("attachments/{attachmentId:guid}/download"),Authorize(Policy=PermissionNames.IncidentsRead)]
     public async Task<IActionResult> Download(Guid attachmentId,CancellationToken ct){var x=await db.IncidentAttachments.AsNoTracking().SingleOrDefaultAsync(x=>x.Id==attachmentId,ct);if(x is null)return NotFound();if(await TechnicianAccess(x.IncidentId,ct)is{}denied)return denied;return File(x.Content,x.ContentType,x.FileName);}
-    [HttpDelete("attachments/{attachmentId:guid}"),Authorize(Policy=PermissionNames.IncidentsManage)]
-    public async Task<IActionResult> DeleteAttachment(Guid attachmentId,CancellationToken ct){var x=await db.IncidentAttachments.FindAsync([attachmentId],ct);if(x is null)return NotFound();db.Remove(x);await db.SaveChangesAsync(ct);return NoContent();}
+    [HttpDelete("attachments/{attachmentId:guid}"),Authorize(Roles=RoleNames.Technician)]
+    public async Task<IActionResult> DeleteAttachment(Guid attachmentId,CancellationToken ct){var x=await db.IncidentAttachments.FindAsync([attachmentId],ct);if(x is null)return NotFound();if(x.UploadedByUserId!=Actor())return Forbid();if(await TechnicianAccess(x.IncidentId,ct)is{}denied)return denied;var incident=await db.Incidents.AsNoTracking().SingleAsync(i=>i.Id==x.IncidentId,ct);if(incident.Status is IncidentStatus.Resolved or IncidentStatus.Closed)return Conflict(new{message="Une preuve d'un incident résolu ne peut plus être supprimée."});db.Remove(x);await db.SaveChangesAsync(ct);return NoContent();}
 
     private Guid Actor() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    private static (bool Valid,string ContentType,string? Error) ValidateAttachment(string name,string declared,byte[] content)
+    {
+        var extension=Path.GetExtension(name).ToLowerInvariant();
+        var binary=new Dictionary<string,(string Mime,byte[] Signature)>{[".pdf"]=("application/pdf",[0x25,0x50,0x44,0x46]),[".jpg"]=("image/jpeg",[0xFF,0xD8,0xFF]),[".jpeg"]=("image/jpeg",[0xFF,0xD8,0xFF]),[".png"]=("image/png",[0x89,0x50,0x4E,0x47,0x0D,0x0A,0x1A,0x0A]),[".webp"]=("image/webp",[0x52,0x49,0x46,0x46])};
+        if(binary.TryGetValue(extension,out var format))return content.AsSpan().StartsWith(format.Signature)?(true,format.Mime,null):(false,"",$"Le contenu ne correspond pas à un fichier {extension} valide.");
+        if(extension is ".txt" or ".log" or ".csv" or ".json")
+        {
+            if(content.Contains((byte)0))return(false,"","Le fichier texte contient des données binaires interdites.");
+            try{_ = new System.Text.UTF8Encoding(false,true).GetString(content);return(true,extension==".json"?"application/json":extension==".csv"?"text/csv":"text/plain",null);}catch{return(false,"","Le fichier texte doit être encodé en UTF-8.");}
+        }
+        return(false,"",$"Type non autorisé. Formats acceptés : PDF, JPG, PNG, WebP, TXT, LOG, CSV et JSON. Type déclaré : {declared}");
+    }
     private async Task<IActionResult?> TechnicianAccess(Guid id, CancellationToken ct)
     {
         if (!User.IsInRole(RoleNames.Technician)) return null;

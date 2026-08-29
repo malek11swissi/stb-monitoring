@@ -1,4 +1,4 @@
-// API de diagnostic et test des fournisseurs Brevo et Twilio.
+// API de diagnostic et test du canal SMTP Gmail.
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StbMonitoring.Application.Interfaces;
@@ -18,13 +18,5 @@ public sealed class NotificationChannelsController(INotificationChannel channels
         return result.Success ? Ok(result) : StatusCode(502, result);
     }
 
-    [HttpPost("test-sms")]
-    public async Task<IActionResult> TestSms(TestSmsRequest request, CancellationToken ct)
-    {
-        var result = await channels.SendSmsAsync(request.Recipient, request.Message, ct);
-        return result.Success ? Ok(result) : StatusCode(502, result);
-    }
-
     public sealed record TestEmailRequest(string Recipient, string Subject, string HtmlContent);
-    public sealed record TestSmsRequest(string Recipient, string Message);
 }

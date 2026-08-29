@@ -1,36 +1,36 @@
 /** Page publique de connexion et retour vers la page initialement demandée. */
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 
 @Component({
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule,RouterLink],
+  styleUrls: ['./login.animation.css','./login.radar.css','./login.logo.css','./login.radar-large.css','./login.copy.css','./login.radar-position.css','./login.radar-hud.css'],
   template: `
     <main class="auth-page">
       <section class="brand-panel" aria-label="Présentation de STB Sentinel">
         <div class="brand">
-          <span class="brand-mark">S</span>
-          <div><strong>STB Sentinel</strong><small>Monitoring Console</small></div>
+          <span class="brand-mark stb-logo"><img src="/assets/stb-logo.jpg" alt="Logo STB"></span>
+          <div><strong>STB Monitoring</strong><small>Centre de supervision intelligent</small></div>
         </div>
 
         <div class="brand-content">
-          <span class="eyebrow"><i></i> Plateforme opérationnelle sécurisée</span>
-          <h1>Anticipez les incidents.<br><em>Protégez chaque service.</em></h1>
-          <p>Une vision unifiée de la disponibilité, des alertes et des incidents de votre écosystème bancaire.</p>
-          <div class="features">
-            <article><span>◉</span><div><b>Supervision en temps réel</b><small>État et performance des services critiques</small></div></article>
-            <article><span>⌁</span><div><b>Gestion proactive</b><small>Alertes corrélées, SLA et incidents centralisés</small></div></article>
-            <article><span>✓</span><div><b>Accès sécurisé</b><small>Contrôle d'accès adapté à chaque rôle</small></div></article>
-          </div>
+          <span class="eyebrow"><i></i> Disponibilité · sécurité · anticipation</span>
+          <h1>Gardez vos systèmes<br><em>sous contrôle.</em></h1>
+          <p>Détectez les anomalies plus tôt et accélérez la résolution grâce à une supervision enrichie par l’IA.</p>
+          <section class="monitor-radar" aria-label="Illustration animée de la supervision intelligente">
+            <div class="radar-stage"><span class="hud hud-availability"><i>✓</i><small>Disponibilité</small><b>99,98 %</b></span><span class="hud hud-systems"><i>◉</i><small>SI surveillés</small><b>4 actifs</b></span><div class="radar-disc"><i class="ring ring-one"></i><i class="ring ring-two"></i><i class="cross horizontal"></i><i class="cross vertical"></i><i class="sweep"></i><span class="radar-core"><b>S</b><small>Monitoring</small></span><span class="system-node core"><i></i><b>CORE</b><small>UP</small></span><span class="system-node rne"><i></i><b>RNE</b><small>UP</small></span><span class="system-node sms"><i></i><b>SMS</b><small>UP</small></span><span class="system-node rh"><i></i><b>RH</b><small>DEGRADED</small></span><span class="signal signal-one"></span><span class="signal signal-two"></span></div><span class="hud hud-latency"><i>⌁</i><small>Latence moyenne</small><b>142 ms</b></span><span class="hud hud-tls"><i>⌾</i><small>Sécurité TLS</small><b>Validée</b></span></div>
+            <footer class="radar-status"><span><i class="online"></i> 3 systèmes disponibles</span><span><i class="warning"></i> 1 anomalie anticipée</span><span><i class="ai"></i> Modèle IA actif</span></footer>
+          </section>
         </div>
 
         <footer><span><i></i> Services de supervision opérationnels</span><small>STB · Direction des Systèmes d'Information</small></footer>
       </section>
 
       <section class="form-panel">
-        <div class="mobile-brand"><span class="brand-mark">S</span><strong>STB Sentinel</strong></div>
+        <div class="mobile-brand"><span class="brand-mark stb-logo"><img src="/assets/stb-logo.jpg" alt="Logo STB"></span><strong>STB Monitoring</strong></div>
         <div class="login-card">
           <header>
             <span class="welcome-icon">↗</span>
@@ -39,6 +39,8 @@ import { AuthService } from '../core/auth.service';
           </header>
 
           <form #loginForm="ngForm" (ngSubmit)="submit()" novalidate>
+            @if(twoFactorRequired){<div class="security-note"><span>⌾</span><p><b>Vérification administrateur</b><small>Un code à 6 chiffres a été envoyé à votre adresse e-mail. Il expire dans 5 minutes.</small></p></div><label for="twoFactorCode">Code de sécurité</label><div class="control"><span>✦</span><input id="twoFactorCode" name="twoFactorCode" [(ngModel)]="twoFactorCode" required pattern="[0-9]{6}" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000" [disabled]="loading"></div>}
+            @if(!twoFactorRequired){
             <label for="login">Nom d'utilisateur ou adresse e-mail</label>
             <div class="control" [class.invalid]="loginField.touched && loginField.invalid">
               <span aria-hidden="true">○</span>
@@ -53,12 +55,14 @@ import { AuthService } from '../core/auth.service';
               <button type="button" class="reveal" (click)="showPassword=!showPassword" [attr.aria-label]="showPassword?'Masquer le mot de passe':'Afficher le mot de passe'">{{showPassword?'Masquer':'Afficher'}}</button>
             </div>
             @if(passwordField.touched && passwordField.invalid){<small class="field-error">Le mot de passe doit contenir au moins 8 caractères.</small>}
+            }
 
             @if(error){<div class="alert" role="alert"><span>!</span><p>{{error}}</p></div>}
 
             <button class="submit" [disabled]="loading || loginForm.invalid">
-              @if(loading){<i class="spinner"></i><span>Connexion en cours…</span>}@else{<span>Se connecter</span><b>→</b>}
+              @if(loading){<i class="spinner"></i><span>Vérification…</span>}@else{<span>{{twoFactorRequired?'Valider le code':'Se connecter'}}</span><b>→</b>}
             </button>
+            <a routerLink="/forgot-password" style="justify-self:end;color:#087e76;font-size:12px;font-weight:750;text-decoration:none;margin-top:4px">Mot de passe oublié ?</a>
           </form>
 
           <div class="security-note"><span>⌾</span><p><b>Connexion sécurisée</b><small>Vos accès sont chiffrés et les actions sensibles sont journalisées.</small></p></div>
@@ -72,13 +76,14 @@ import { AuthService } from '../core/auth.service';
   `]
 })
 export class LoginComponent {
-  login=''; password=''; error=''; loading=false; showPassword=false;
+  login=''; password='';twoFactorCode='';challengeToken='';twoFactorRequired=false; error=''; loading=false; showPassword=false;
   constructor(private auth:AuthService,private router:Router,private route:ActivatedRoute){}
   submit(){
     if(this.loading)return;
     this.loading=true;this.error='';
-    this.auth.login(this.login.trim(),this.password).subscribe({
-      next:()=>this.router.navigateByUrl(this.safeReturnUrl()),
+    const request=this.twoFactorRequired?this.auth.verifyTwoFactor(this.challengeToken,this.twoFactorCode):this.auth.login(this.login.trim(),this.password);
+    request.subscribe({
+      next:result=>{if(result.requiresTwoFactor&&result.challengeToken){this.challengeToken=result.challengeToken;this.twoFactorRequired=true;this.password='';this.loading=false;return}this.router.navigateByUrl(this.safeReturnUrl())},
       error:e=>{this.error=e.status===0?'Le service est momentanément indisponible. Réessayez dans quelques instants.':e.error?.message||'Identifiants incorrects ou compte désactivé.';this.loading=false}
     });
   }

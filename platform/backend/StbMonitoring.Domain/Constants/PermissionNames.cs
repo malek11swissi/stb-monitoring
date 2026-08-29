@@ -6,6 +6,7 @@ public static class PermissionNames
     public const string AuditRead = "audit.read";
     public const string SystemsRead = "systems.read";
     public const string SystemsManage = "systems.manage";
+    public const string EndpointsManage = "endpoints.manage";
     public const string ChecksRead = "checks.read";
     public const string ChecksExecute = "checks.execute";
     public const string AlertsRead="alerts.read"; public const string AlertsAcknowledge="alerts.acknowledge"; public const string AlertRulesManage="alert_rules.manage";
@@ -13,17 +14,23 @@ public static class PermissionNames
     public const string SlaManage="sla.manage"; public const string NotificationsRead="notifications.read"; public const string NotificationsManage="notifications.manage";
     public const string ReportingRead="reporting.read"; public const string ReportingExport="reporting.export";
     public const string MaintenanceRead="maintenance.read"; public const string MaintenanceManage="maintenance.manage";
-    public static readonly string[] All = [UsersRead, UsersManage, AuditRead, SystemsRead, SystemsManage, ChecksRead, ChecksExecute,AlertsRead,AlertsAcknowledge,AlertRulesManage,IncidentsRead,IncidentsManage,IncidentsAssign,IncidentsWork,IncidentsResolve,IncidentsClose,IncidentsArchive,IncidentsDelete,SlaManage,NotificationsRead,NotificationsManage,ReportingRead,ReportingExport,MaintenanceRead,MaintenanceManage];
+    public static readonly string[] All = [UsersRead, UsersManage, AuditRead, SystemsRead, SystemsManage, EndpointsManage, ChecksRead, ChecksExecute,AlertsRead,AlertsAcknowledge,AlertRulesManage,IncidentsRead,IncidentsManage,IncidentsAssign,IncidentsWork,IncidentsResolve,IncidentsClose,IncidentsArchive,IncidentsDelete,SlaManage,NotificationsRead,NotificationsManage,ReportingRead,ReportingExport,MaintenanceRead,MaintenanceManage];
 
     public static IReadOnlyCollection<string> RolesFor(string permission) => permission switch
     {
-        UsersRead or UsersManage or AuditRead or AlertRulesManage or SlaManage or NotificationsManage or IncidentsDelete => [RoleNames.Admin],
-        IncidentsArchive => [RoleNames.Admin,RoleNames.Supervisor],
-        SystemsManage or ChecksExecute or AlertsAcknowledge or IncidentsManage or IncidentsAssign or IncidentsClose or MaintenanceManage => [RoleNames.Admin, RoleNames.Supervisor],
-        IncidentsWork or IncidentsResolve => [RoleNames.Admin, RoleNames.Supervisor, RoleNames.Technician],
+        UsersRead or UsersManage or AuditRead or NotificationsManage or IncidentsDelete => [RoleNames.Admin],
+        AlertRulesManage => [RoleNames.Supervisor],
+        SlaManage => [RoleNames.ManagerIt],
+        IncidentsArchive or IncidentsManage or IncidentsAssign or IncidentsClose or MaintenanceManage => [RoleNames.Supervisor],
+        SystemsManage => [RoleNames.Admin],
+        EndpointsManage => [RoleNames.Supervisor],
+        ChecksExecute or AlertsAcknowledge => [RoleNames.Supervisor],
+        IncidentsWork or IncidentsResolve => [RoleNames.Technician],
         ReportingExport => [RoleNames.ManagerIt],
-        SystemsRead or ChecksRead or IncidentsRead or NotificationsRead or ReportingRead or MaintenanceRead => RoleNames.All,
-        AlertsRead => [RoleNames.Admin, RoleNames.Supervisor, RoleNames.ManagerIt],
+        SystemsRead or IncidentsRead or NotificationsRead or ReportingRead => RoleNames.All,
+        ChecksRead => [RoleNames.Supervisor,RoleNames.Technician],
+        MaintenanceRead => [RoleNames.Supervisor,RoleNames.Technician,RoleNames.ManagerIt],
+        AlertsRead => [RoleNames.Supervisor],
         _ => [RoleNames.Admin]
     };
 }

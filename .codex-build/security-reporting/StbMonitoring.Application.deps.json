@@ -1,0 +1,39 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "StbMonitoring.Application/1.0.0": {
+        "dependencies": {
+          "StbMonitoring.Domain": "1.0.0"
+        },
+        "runtime": {
+          "StbMonitoring.Application.dll": {}
+        }
+      },
+      "StbMonitoring.Domain/1.0.0": {
+        "runtime": {
+          "StbMonitoring.Domain.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "StbMonitoring.Application/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "StbMonitoring.Domain/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

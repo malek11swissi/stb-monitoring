@@ -12,14 +12,14 @@ namespace StbMonitoring.Application.Services;
 /// l'audit. Il ne décide pas des droits fonctionnels : ceux-ci sont appliqués
 /// ensuite par les politiques d'autorisation à partir du rôle contenu dans le JWT.
 /// </summary>
-public sealed class AuthService(IIdentityStore store, IPasswordService passwords, ITokenService tokens) : IAuthService
+public sealed class AuthService(IIdentityStore store, IPasswordService passwords, ITokenService tokens,INotificationChannel notifications) : IAuthService
 {
     /// <summary>Renouvelle le JWT seulement si le compte existe toujours et reste actif.</summary>
     public async Task<LoginResponse> RefreshAsync(Guid userId, CancellationToken ct)
     {
         var user = await store.FindUserByIdAsync(userId, ct) ?? throw new KeyNotFoundException("Utilisateur introuvable.");
         if (!user.IsActive) throw new UnauthorizedAccessException("Compte désactivé.");
-        var token = tokens.Generate(new(user.Id, user.Username, user.Email, user.Role));
+        var token = tokens.Generate(new(user.Id, user.Username, user.Email, user.Role,user.SessionVersion));
         return new(token.Token, token.ExpiresAt, await MapAsync(user, ct));
     }
     public async Task<LoginResponse?> LoginAsync(LoginRequest request, string? ip, CancellationToken ct)
@@ -29,10 +29,25 @@ public sealed class AuthService(IIdentityStore store, IPasswordService passwords
         // désactivé ou un mauvais mot de passe afin de ne pas révéler les comptes existants.
         if (user is null || !user.IsActive || !passwords.Verify(user.PasswordHash, request.Password))
         { store.AddAudit(new AuditLog(user?.Id, "LOGIN_FAILED", "User", user?.Id, "Identifiants invalides", ip)); await store.SaveChangesAsync(ct); return null; }
+        if(user.Role==StbMonitoring.Domain.Constants.RoleNames.Admin)
+        {
+            var challenge=Convert.ToHexString(RandomNumberGenerator.GetBytes(32));var code=RandomNumberGenerator.GetInt32(0,1_000_000).ToString("D6");
+            user.BeginTwoFactorChallenge(HashToken(challenge),HashToken(code),DateTime.UtcNow.AddMinutes(5));
+            var sent=await notifications.SendEmailAsync(user.Email,"Code de connexion administrateur — STB Monitoring",$"<div style=\"font-family:Arial,sans-serif;max-width:560px;margin:auto\"><h2 style=\"color:#123b5d\">Vérification de votre connexion</h2><p>Utilisez ce code pour terminer la connexion administrateur :</p><div style=\"font-size:32px;letter-spacing:8px;font-weight:bold;color:#087e8b;padding:18px;background:#f0f7f8;text-align:center\">{code}</div><p>Ce code expire dans 5 minutes et ne peut être utilisé qu’une fois.</p><small>Si vous n’êtes pas à l’origine de cette tentative, changez votre mot de passe et contactez l’équipe sécurité.</small></div>",ct);
+            if(!sent.Success)throw new InvalidOperationException("Connexion administrateur interrompue : impossible d’envoyer le code de sécurité.");
+            store.AddAudit(new AuditLog(user.Id,"TWO_FACTOR_CODE_SENT","User",user.Id,null,ip));await store.SaveChangesAsync(ct);return new(null,null,null,true,challenge);
+        }
         user.RecordLogin();
-        var token = tokens.Generate(new(user.Id, user.Username, user.Email, user.Role));
+        var token = tokens.Generate(new(user.Id, user.Username, user.Email, user.Role,user.SessionVersion));
         store.AddAudit(new AuditLog(user.Id, "LOGIN_SUCCESS", "User", user.Id, null, ip)); await store.SaveChangesAsync(ct);
         return new(token.Token, token.ExpiresAt, await MapAsync(user, ct));
+    }
+    public async Task<LoginResponse?> VerifyTwoFactorAsync(VerifyTwoFactorRequest request,string? ip,CancellationToken ct)
+    {
+        var challengeHash=HashToken(request.ChallengeToken);var codeHash=HashToken(request.Code);var users=await store.GetUsersAsync(ct);var user=users.SingleOrDefault(x=>x.HasTwoFactorChallenge(challengeHash,DateTime.UtcNow));
+        if(user is null)return null;
+        if(!user.CanVerifyTwoFactor(challengeHash,codeHash,DateTime.UtcNow)){user.RecordTwoFactorFailure();store.AddAudit(new AuditLog(user.Id,"TWO_FACTOR_FAILED","User",user.Id,"Code invalide",ip));await store.SaveChangesAsync(ct);return null;}
+        user.CompleteTwoFactor();var token=tokens.Generate(new(user.Id,user.Username,user.Email,user.Role,user.SessionVersion));store.AddAudit(new AuditLog(user.Id,"LOGIN_SUCCESS_2FA","User",user.Id,null,ip));await store.SaveChangesAsync(ct);return new(token.Token,token.ExpiresAt,await MapAsync(user,ct));
     }
     public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request, string? ip, CancellationToken ct)
     {
@@ -76,7 +91,7 @@ internal static class UserMapper
             : "Nouveau technicien";
         var avatarUrl = string.IsNullOrWhiteSpace(u.AvatarPath) ? null : "/" + u.AvatarPath.Replace('\\', '/').TrimStart('/');
         return new(u.Id, u.Username, u.Email, u.FirstName, u.LastName, u.Role, u.IsActive,
-            u.CreatedAt, u.LastLoginAt, avatarUrl,
+            u.CreatedAt, u.LastLoginAt, avatarUrl, u.PhoneNumber, u.JobTitle,
             u.Skills.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), badge, resolved);
     }
 }
@@ -85,7 +100,7 @@ internal static class UserMapper
 /// Gère le cycle de vie administratif des comptes. Les garde-fous empêchent
 /// notamment la suppression fonctionnelle du dernier administrateur actif.
 /// </summary>
-public sealed class UserService(IIdentityStore store, IPasswordService passwords) : IUserService
+public sealed class UserService(IIdentityStore store, IPasswordService passwords, INotificationChannel notifications) : IUserService
 {
     public async Task<IReadOnlyCollection<UserResponse>> GetAllAsync(CancellationToken ct)
     {
@@ -96,10 +111,18 @@ public sealed class UserService(IIdentityStore store, IPasswordService passwords
     public async Task<UserResponse?> GetByIdAsync(Guid id, CancellationToken ct) { var user = await store.FindUserByIdAsync(id, ct); return user is null ? null : await MapAsync(user, ct); }
     public async Task<UserResponse> CreateAsync(CreateUserRequest r, Guid actor, string? ip, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(r.Username) || string.IsNullOrWhiteSpace(r.Email) || r.Password.Length < 8) throw new ArgumentException("Nom, e-mail et mot de passe (8 caractères minimum) sont obligatoires.");
+        if (string.IsNullOrWhiteSpace(r.Username) || string.IsNullOrWhiteSpace(r.Email)) throw new ArgumentException("Nom d’utilisateur et e-mail sont obligatoires.");
         if (await store.UsernameOrEmailExistsAsync(r.Username, r.Email, null, ct)) throw new InvalidOperationException("Nom d’utilisateur ou e-mail déjà utilisé.");
-        var user = new User(r.Username, r.Email, passwords.Hash(r.Password), r.FirstName, r.LastName, r.Role); store.AddUser(user);
-        store.AddAudit(new AuditLog(actor, "USER_CREATED", "User", user.Id, user.Username, ip)); await store.SaveChangesAsync(ct);
+        var temporaryPassword=$"Tmp!{Convert.ToHexString(RandomNumberGenerator.GetBytes(12))}aA1";
+        var user = new User(r.Username, r.Email, passwords.Hash(temporaryPassword), r.FirstName, r.LastName, r.Role);
+        var setupToken=Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        user.BeginPasswordReset(Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(setupToken))),DateTime.UtcNow.AddHours(24));
+        var link=$"http://localhost:4200/reset-password?token={Uri.EscapeDataString(setupToken)}";
+        var sent=await notifications.SendEmailAsync(user.Email,"Activez votre compte STB Monitoring",$"<h2>Bienvenue {System.Net.WebUtility.HtmlEncode(user.FirstName)}</h2><p>Votre compte <strong>{System.Net.WebUtility.HtmlEncode(user.Username)}</strong> a été créé.</p><p><a href=\"{link}\">Définir mon mot de passe</a></p><p>Ce lien expire dans 24 heures. Aucun mot de passe n’est envoyé par e-mail.</p>",ct);
+        if(!sent.Success)throw new InvalidOperationException($"Compte non créé : Gmail SMTP a refusé l’invitation. {sent.Error}");
+        store.AddUser(user);
+        store.AddAudit(new AuditLog(actor, "USER_CREATED", "User", user.Id, user.Username, ip));
+        store.AddAudit(new AuditLog(actor,"USER_INVITATION_SENT","User",user.Id,sent.ExternalId,ip));await store.SaveChangesAsync(ct);
         return (await GetByIdAsync(user.Id, ct))!;
     }
     public async Task<UserResponse> UpdateAsync(Guid id, UpdateUserRequest r, Guid actor, string? ip, CancellationToken ct)
@@ -110,7 +133,7 @@ public sealed class UserService(IIdentityStore store, IPasswordService passwords
     {
         var user=await Required(id,ct);
         if(await store.UsernameOrEmailExistsAsync(user.Username,r.Email,id,ct))throw new InvalidOperationException("E-mail déjà utilisé.");
-        user.UpdateProfile(r.FirstName,r.LastName,r.Email);user.UpdateSkills(r.Skills??[]);
+        user.UpdateProfile(r.FirstName,r.LastName,r.Email,r.PhoneNumber,r.JobTitle);user.UpdateSkills(r.Skills??[]);
         Audit(id,"PROFILE_UPDATED",user,ip,$"{user.Skills.Split('|',StringSplitOptions.RemoveEmptyEntries).Length} compétence(s)");
         await store.SaveChangesAsync(ct);return await MapAsync(user,ct);
     }

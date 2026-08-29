@@ -3,11 +3,14 @@ import { Routes } from '@angular/router';
 import { authGuard, permissionGuard } from './core/auth.guard';
 export const routes: Routes = [
   { path: 'login', loadComponent: () => import('./features/login.component').then(m => m.LoginComponent) },
+  { path: 'forgot-password', loadComponent: () => import('./features/password-recovery.component').then(m => m.PasswordRecoveryComponent) },
+  { path: 'reset-password', loadComponent: () => import('./features/password-recovery.component').then(m => m.PasswordRecoveryComponent) },
   { path: 'dashboard', canActivate: [authGuard], loadComponent: () => import('./features/dashboard.component').then(m => m.DashboardComponent) },
   { path: 'systems', canActivate: [permissionGuard], data:{permission:'systems.read'}, loadComponent: () => import('./features/systems.component').then(m => m.SystemsComponent) },
   { path: 'systems/:id', canActivate: [permissionGuard], data:{permission:'systems.read'}, loadComponent: () => import('./features/system-detail.component').then(m => m.SystemDetailComponent) },
   { path: 'alerts', canActivate: [permissionGuard], data:{permission:'alerts.read'}, loadComponent: () => import('./features/alerts.component').then(m => m.AlertsComponent) },
   { path: 'alerts/:id', canActivate: [permissionGuard], data:{permission:'alerts.read'}, loadComponent: () => import('./features/alert-detail.component').then(m => m.AlertDetailComponent) },
+  { path: 'alert-rules', canActivate: [permissionGuard], data:{permission:'alert_rules.manage'}, loadComponent: () => import('./features/alert-rules.component').then(m => m.AlertRulesComponent) },
   { path: 'incidents', canActivate: [permissionGuard], data:{permission:'incidents.read'}, loadComponent: () => import('./features/incidents.component').then(m => m.IncidentsComponent) },
   { path: 'incidents/:id', canActivate: [permissionGuard], data:{permission:'incidents.read'}, loadComponent: () => import('./features/incident-detail.component').then(m => m.IncidentDetailComponent) },
   { path: 'notifications', canActivate: [permissionGuard], data:{permission:'notifications.read'}, loadComponent: () => import('./features/notifications.component').then(m => m.NotificationsComponent) },
