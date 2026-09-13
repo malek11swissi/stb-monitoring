@@ -8,6 +8,7 @@
 **/dist
 **/.angular
 **/.venv
+**/.venv-ci
 **/__pycache__
 **/.pytest_cache
 **/appsettings.Local.json
