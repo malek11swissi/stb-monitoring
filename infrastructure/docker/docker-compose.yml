@@ -139,7 +139,8 @@ services:
     profiles: ["devops"]
     image: sonatype/nexus3:latest
     container_name: stb-monitoring-nexus
-    ports: ["8081:8081", "8082:8082"]
+    # 8081 est déjà utilisé sur la machine par un processus Java.
+    ports: ["8083:8081", "8082:8082"]
     volumes: ["nexus_data:/nexus-data"]
 
   # Observabilité locale : --profile monitoring.

@@ -32,7 +32,7 @@ docker compose -f infrastructure/docker/docker-compose.yml up -d --build
 |---|---|---|
 | Jenkins | http://localhost:8088 | Mot de passe initial du conteneur |
 | SonarQube | http://localhost:9000 | `admin` / `admin` |
-| Nexus | http://localhost:8081 | `admin` / mot de passe du conteneur |
+| Nexus | http://localhost:8083 | `admin` / mot de passe du conteneur |
 | Prometheus | http://localhost:9090 | Aucun |
 | Grafana | http://localhost:3000 | `admin` / `admin` |
 | Frontend | http://localhost:4200 | Comptes STB Monitoring |
@@ -82,7 +82,7 @@ l'authentification interne du service IA sera implémentée.
 
 ## Configurer Nexus
 
-1. Ouvrir `http://localhost:8081` et se connecter comme `admin`.
+1. Ouvrir `http://localhost:8083` et se connecter comme `admin`.
 2. Créer un repository **docker (hosted)** nommé `stb-docker-hosted`.
 3. Lui affecter le connecteur HTTP `8082`.
 4. Créer un utilisateur Jenkins autorisé à lire et écrire dans ce repository.
