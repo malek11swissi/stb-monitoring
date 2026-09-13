@@ -1,4 +1,5 @@
 using StbMonitoring.Domain.Entities;
+using StbMonitoring.Application.Contracts;
 namespace StbMonitoring.Application.Interfaces;
 public interface IIdentityStore
 {
@@ -9,6 +10,7 @@ public interface IIdentityStore
     Task<bool> UsernameOrEmailExistsAsync(string username, string email, Guid? excludedUserId, CancellationToken cancellationToken);
     Task<int> CountActiveAdminsAsync(CancellationToken cancellationToken);
     Task<int> CountResolvedIncidentsAsync(Guid userId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<TechnicianResolvedIncidentStat>> GetTechnicianResolvedIncidentStatsAsync(Guid userId, CancellationToken cancellationToken);
     void AddUser(User user);
     void AddAudit(AuditLog auditLog);
     Task SaveChangesAsync(CancellationToken cancellationToken);

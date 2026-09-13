@@ -63,6 +63,44 @@ public sealed class AiPredictionService(HttpClient http,MonitoringDbContext db,I
         }catch(Exception ex)when(ex is HttpRequestException or TaskCanceledException){logger.LogWarning(ex,"Recommandation IA indisponible pour {IncidentId}",incidentId);return UnavailableRecommendation("Microservice IA temporairement indisponible.");}
     }
 
+    public async Task<TechnicianAssignmentRecommendation> RecommendTechnicianAsync(Guid incidentId,CancellationToken ct)
+    {
+        var incident=await db.Incidents.AsNoTracking().SingleOrDefaultAsync(x=>x.Id==incidentId,ct)
+            ??throw new KeyNotFoundException("Incident introuvable.");
+        var systemName=incident.SystemId.HasValue?await db.Systems.AsNoTracking().Where(x=>x.Id==incident.SystemId).Select(x=>x.Name).FirstOrDefaultAsync(ct):null;
+        var technicians=await db.Users.AsNoTracking().Where(x=>x.IsActive&&x.Role==StbMonitoring.Domain.Constants.RoleNames.Technician).ToArrayAsync(ct);
+        var technicianIds=technicians.Select(x=>x.Id).ToArray();
+        var completed=new[]{IncidentStatus.Resolved,IncidentStatus.Closed};
+        var inactive=new[]{IncidentStatus.Resolved,IncidentStatus.Closed,IncidentStatus.Cancelled};
+        var histories=await db.Incidents.AsNoTracking().Where(x=>x.AssignedToUserId.HasValue&&technicianIds.Contains(x.AssignedToUserId.Value)).ToArrayAsync(ct);
+        var inputs=technicians.Select(user=>
+        {
+            var assigned=histories.Where(x=>x.AssignedToUserId==user.Id).ToArray();
+            var resolved=assigned.Where(x=>completed.Contains(x.Status)).ToArray();
+            return new TechnicianAssignmentInput(user.Id,user.FirstName,user.LastName,PublicAvatarUrl(user.AvatarPath),
+                user.Skills.Split('|',StringSplitOptions.RemoveEmptyEntries|StringSplitOptions.TrimEntries),true,
+                assigned.Count(x=>!inactive.Contains(x.Status)),resolved.Length,
+                resolved.Count(x=>x.Category==incident.Category),
+                resolved.Count(x=>incident.SystemId.HasValue&&x.SystemId==incident.SystemId));
+        }).ToArray();
+        var request=new TechnicianAssignmentRequest(
+            new(incident.Id,incident.Title,incident.Description,incident.Category.ToString(),incident.Priority.ToString(),incident.SystemId,systemName),inputs);
+        try
+        {
+            using var response=await http.PostAsJsonAsync("api/v1/predictions/technician-assignment",request,ct);
+            if(!response.IsSuccessStatusCode)return UnavailableAssignment($"Service IA en erreur HTTP {(int)response.StatusCode}.");
+            return await response.Content.ReadFromJsonAsync<TechnicianAssignmentRecommendation>(cancellationToken:ct)
+                ??UnavailableAssignment("Réponse IA vide.");
+        }
+        catch(Exception ex)when(ex is HttpRequestException or TaskCanceledException)
+        {
+            logger.LogWarning(ex,"Suggestion de technicien indisponible pour {IncidentId}",incidentId);
+            return UnavailableAssignment("Microservice IA temporairement indisponible. L'affectation manuelle reste disponible.");
+        }
+    }
+
     private static SystemRiskPrediction Unavailable(Guid id,string message)=>new(false,id,"system-risk-random-forest","unavailable","unavailable",0,0,0,0,0,"Unavailable",0,null,[],[],DateTime.UtcNow,message);
     private static IncidentResolutionRecommendation UnavailableRecommendation(string message)=>new(false,"tfidf-cosine-retrieval","unavailable",0,[],message);
+    private static TechnicianAssignmentRecommendation UnavailableAssignment(string message)=>new(false,"explainable-technician-ranking","unavailable",[],message);
+    private static string? PublicAvatarUrl(string? path)=>string.IsNullOrWhiteSpace(path)?null:"/"+path.Replace('\\','/').TrimStart('/');
 }

@@ -1,0 +1,13 @@
+/* Job de contrôle : vérifie les interfaces et les cibles Prometheus. */
+pipeline {
+  agent any
+  options { timestamps(); timeout(time: 10, unit: 'MINUTES') }
+  stages {
+    stage('Services applicatifs') {
+      steps { sh 'curl --fail http://localhost:5041/health && curl --fail http://localhost:5055/health && curl --fail http://localhost:4200/healthz' }
+    }
+    stage('Observabilité') {
+      steps { sh 'curl --fail http://localhost:9090/-/ready && curl --fail http://localhost:3000/api/health' }
+    }
+  }
+}

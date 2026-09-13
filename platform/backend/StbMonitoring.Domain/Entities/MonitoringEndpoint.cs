@@ -3,7 +3,19 @@ namespace StbMonitoring.Domain.Entities;
 public sealed class MonitoringEndpoint
 {
     private MonitoringEndpoint() { }
-    public MonitoringEndpoint(Guid systemId,string name,string url,CheckType checkType,string httpMethod,int expectedStatusCode,int timeoutSeconds,int intervalSeconds,int degradedThresholdMs,int downThresholdMs,bool isCritical,string? expectedJsonProperty,string? expectedJsonValue)
+    public MonitoringEndpoint(Guid systemId,
+    string name,
+    string url,
+    CheckType checkType,
+    string httpMethod,
+    int expectedStatusCode,
+    int timeoutSeconds,
+    int intervalSeconds,
+    int degradedThresholdMs,
+    int downThresholdMs,
+    bool isCritical,
+    string? expectedJsonProperty,
+    string? expectedJsonValue)
     {Id=Guid.NewGuid();SystemId=systemId;Update(name,url,checkType,httpMethod,expectedStatusCode,timeoutSeconds,intervalSeconds,degradedThresholdMs,downThresholdMs,isCritical,expectedJsonProperty,expectedJsonValue);NextCheckAt=DateTime.UtcNow;}
     public Guid Id{get;private set;} public Guid SystemId{get;private set;} public MonitoredSystem System{get;private set;}=null!; public string Name{get;private set;}=string.Empty; public string Url{get;private set;}=string.Empty; public CheckType CheckType{get;private set;} public string HttpMethod{get;private set;}="GET";
     public int ExpectedStatusCode{get;private set;}=200; public int TimeoutSeconds{get;private set;}=10; public int IntervalSeconds{get;private set;}=60; public int DegradedThresholdMs{get;private set;}=1500; public int DownThresholdMs{get;private set;}=3000; public bool IsCritical{get;private set;}=true; public bool IsActive{get;private set;}=true;

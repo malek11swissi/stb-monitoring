@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - platform.yaml
+  - simulators.yaml
+  - data-services.yaml
+  - ingress.yaml
+  - network-policies.yaml
+configMapGenerator:
+  - name: stb-config
+    literals:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - AI_BASE_URL=http://stb-ai-service:5055
+generatorOptions:
+  disableNameSuffixHash: true
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: stb-monitoring
+    includeSelectors: true

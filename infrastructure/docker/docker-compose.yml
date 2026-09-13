@@ -1,5 +1,47 @@
 services:
+  # API principale .NET. Les workers de monitoring s'exécutent dans ce service.
+  api:
+    image: ${NEXUS_REGISTRY:-local}/stb-monitoring-api:${IMAGE_TAG:-local}
+    build:
+      context: ../..
+      dockerfile: platform/backend/Dockerfile
+    container_name: stb-monitoring-api
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      ai-service: { condition: service_healthy }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__PostgreSql: Host=postgres;Port=5432;Database=stb_monitoring;Username=stb_admin;Password=${POSTGRES_PASSWORD:-ChangeMe_Postgres_123!}
+      Jwt__Issuer: StbMonitoring.Api
+      Jwt__Audience: StbMonitoring.Frontend
+      Jwt__Key: ${JWT_KEY:-CHANGE_THIS_DOCKER_KEY_MINIMUM_32_CHARACTERS}
+      FrontendUrl: http://localhost:4200
+      Ai__BaseUrl: http://ai-service:5055
+      Notifications__Email__Mode: ${EMAIL_MODE:-Simulation}
+      Notifications__Email__Host: smtp.gmail.com
+      Notifications__Email__Port: 587
+      Notifications__Email__UseTls: "true"
+      Notifications__Email__Username: ${EMAIL_USERNAME:-}
+      Notifications__Email__Password: ${EMAIL_PASSWORD:-}
+      Notifications__Email__SenderEmail: ${EMAIL_SENDER:-}
+      Notifications__Email__SenderName: STB Monitoring
+    ports: ["5041:8080"]
+    volumes:
+      - stb_avatars:/app/wwwroot/avatars
+      - stb_attachments:/app/wwwroot/attachments
+
+  # Angular est compilé puis servi par Nginx.
+  frontend:
+    image: ${NEXUS_REGISTRY:-local}/stb-monitoring-frontend:${IMAGE_TAG:-local}
+    build: { context: ../../platform/frontend }
+    container_name: stb-monitoring-frontend
+    restart: unless-stopped
+    depends_on: [api]
+    ports: ["4200:8080"]
+
   ai-service:
+    image: ${NEXUS_REGISTRY:-local}/stb-monitoring-ai:${IMAGE_TAG:-local}
     build:
       context: ../../ai-service
     container_name: stb-sentinel-ai
@@ -31,5 +73,112 @@ services:
       timeout: 5s
       retries: 5
 
+  # Les quatre simulateurs sont optionnels : --profile simulators.
+  core-banking-simulator:
+    profiles: ["simulators"]
+    image: ${NEXUS_REGISTRY:-local}/stb-core-banking-simulator:${IMAGE_TAG:-local}
+    build: { context: ../../simulators/CoreBankingSimulator }
+    ports: ["5101:8080"]
+
+  rne-simulator:
+    profiles: ["simulators"]
+    image: ${NEXUS_REGISTRY:-local}/stb-rne-simulator:${IMAGE_TAG:-local}
+    build: { context: ../../simulators/RneSimulator }
+    ports: ["5102:8080"]
+
+  sms-simulator:
+    profiles: ["simulators"]
+    image: ${NEXUS_REGISTRY:-local}/stb-sms-simulator:${IMAGE_TAG:-local}
+    build: { context: ../../simulators/SmsSimulator }
+    ports: ["5103:8080"]
+
+  hr-simulator:
+    profiles: ["simulators"]
+    image: ${NEXUS_REGISTRY:-local}/stb-hr-simulator:${IMAGE_TAG:-local}
+    build: { context: ../../simulators/HrSimulator }
+    ports: ["5104:8080"]
+
+  # Usine logicielle locale : --profile devops.
+  jenkins:
+    profiles: ["devops"]
+    build:
+      context: ../..
+      dockerfile: infrastructure/jenkins/Dockerfile
+    container_name: stb-monitoring-jenkins
+    user: root
+    # 8080 est déjà occupé sur la machine par Oracle TNS Listener.
+    ports: ["8088:8080", "50000:50000"]
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  sonar-db:
+    profiles: ["devops"]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: sonar
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: ${SONAR_DB_PASSWORD:-sonar_local_password}
+    volumes: ["sonar_db_data:/var/lib/postgresql/data"]
+
+  sonarqube:
+    profiles: ["devops"]
+    image: sonarqube:lts-community
+    container_name: stb-monitoring-sonarqube
+    depends_on: [sonar-db]
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonar-db:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: ${SONAR_DB_PASSWORD:-sonar_local_password}
+    ports: ["9000:9000"]
+    volumes:
+      - sonar_data:/opt/sonarqube/data
+      - sonar_extensions:/opt/sonarqube/extensions
+
+  nexus:
+    profiles: ["devops"]
+    image: sonatype/nexus3:latest
+    container_name: stb-monitoring-nexus
+    ports: ["8081:8081", "8082:8082"]
+    volumes: ["nexus_data:/nexus-data"]
+
+  # Observabilité locale : --profile monitoring.
+  blackbox-exporter:
+    profiles: ["monitoring"]
+    image: prom/blackbox-exporter:latest
+    volumes:
+      - ../monitoring/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+
+  prometheus:
+    profiles: ["monitoring"]
+    image: prom/prometheus:latest
+    container_name: stb-monitoring-prometheus
+    ports: ["9090:9090"]
+    volumes:
+      - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+  grafana:
+    profiles: ["monitoring"]
+    image: grafana/grafana:latest
+    container_name: stb-monitoring-grafana
+    depends_on: [prometheus]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+    ports: ["3000:3000"]
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ../monitoring/grafana/datasource.yml:/etc/grafana/provisioning/datasources/stb.yml:ro
+
 volumes:
   stb_monitoring_postgres_data:
+  stb_avatars:
+  stb_attachments:
+  jenkins_data:
+  sonar_db_data:
+  sonar_data:
+  sonar_extensions:
+  nexus_data:
+  prometheus_data:
+  grafana_data:

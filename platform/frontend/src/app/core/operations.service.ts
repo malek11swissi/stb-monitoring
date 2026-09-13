@@ -2,6 +2,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { from } from 'rxjs';
+import { API_ROOT } from './api-url';
 
 export interface AlertItem { id:string;alertNumber:string;systemId:string;systemName:string;endpointId:string;endpointName:string;type:string;title:string;description:string;severity:string;status:string;occurrenceCount:number;firstDetectedAt:string;lastDetectedAt:string;acknowledgedAt?:string;resolvedAt?:string;incidentId?:string;lastError?:string }
 export interface AlertRule { id:string;name:string;description:string;eventType:string;severity:string;consecutiveFailures:number;deduplicationMinutes:number;autoResolve:boolean;notifyInApp:boolean;isActive:boolean;systemId?:string;endpointId?:string }
@@ -18,13 +19,14 @@ export interface ReportIncident {id:string;incidentNumber:string;title:string;sy
 export interface ReportData {from:string;to:string;generatedAt:string;incidents:ReportIncident[]}
 export interface MaintenanceWindow {id:string;title:string;description?:string;systemId?:string;endpointId?:string;startsAt:string;endsAt:string;suppressAlerts:boolean;isCancelled:boolean;createdByUserId:string;createdAt:string}
 export interface IncidentAttachment {id:string;fileName:string;contentType:string;size:number;isResolutionProof:boolean;createdAt:string}
-export interface ResolutionRecommendation {available:boolean;modelName:string;modelVersion:string;candidateCount:number;message?:string;recommendations:{sourceIncidentId:string;incidentNumber:string;title:string;similarity:number;sourceType:string;rootCause?:string;correctiveAction:string;preventiveAction?:string;resolutionSummary?:string}[]}
+export interface ResolutionRecommendation {available:boolean;modelName:string;modelVersion:string;candidateCount:number;message?:string;recommendations:{sourceIncidentId:string;incidentNumber:string;title:string;similarity:number;sourceType:string;rootCause?:string;correctiveAction:string;preventiveAction?:string;resolutionSummary?:string;matchReasons?:string[]}[]}
+export interface TechnicianRecommendation {available:boolean;modelName:string;modelVersion:string;message?:string;recommendations:{technicianId:string;firstName:string;lastName:string;avatarPath?:string;score:number;confidence:string;skills:string[];activeIncidentCount:number;similarResolvedCount:number;systemResolvedCount:number;reasons:string[]}[]}
 export interface PagedResult<T>{items:T[];total:number;page:number;pageSize:number;totalPages:number;todayTotal?:number}
 export interface AlertPagedResult extends PagedResult<AlertItem>{todayTotal:number}
 
 @Injectable({ providedIn:'root' })
 export class OperationsService {
-  private readonly api='http://localhost:5041/api';
+  private readonly api=API_ROOT;
   constructor(private http:HttpClient) {}
   alerts(){return this.http.get<AlertItem[]>(`${this.api}/alerts`)}
   alertsPaged(filters:Record<string,string|number>){const q=new URLSearchParams();Object.entries(filters).forEach(([k,v])=>{if(v!=='')q.set(k,String(v))});return this.http.get<AlertPagedResult>(`${this.api}/alerts/paged?${q}`)}
@@ -43,6 +45,7 @@ export class OperationsService {
   incidentTimeline(id:string){return this.http.get<IncidentTimelineItem[]>(`${this.api}/incidents/${id}/timeline`)}
   technicians(){return this.http.get<IncidentAssignee[]>(`${this.api}/users/technicians`)}
   resolutionRecommendations(id:string){return this.http.get<ResolutionRecommendation>(`${this.api}/ai/incidents/${id}/resolution-recommendations`)}
+  technicianRecommendations(id:string){return this.http.get<TechnicianRecommendation>(`${this.api}/ai/incidents/${id}/technician-recommendations`)}
   createIncident(value:any){return this.createIncidentFromAlert(value.alertId)}
   updateIncident(id:string,value:any){return this.http.put<Incident>(`${this.api}/incidents/${id}`,value)}
   assign(id:string,userId:string){return this.http.post(`${this.api}/incidents/${id}/assign`,{userId})}

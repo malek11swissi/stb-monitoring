@@ -1,0 +1,42 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny-ingress }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-public-platform }
+spec:
+  podSelector: { matchExpressions: [{ key: app, operator: In, values: [stb-api, stb-frontend] }] }
+  policyTypes: [Ingress]
+  ingress: [{ from: [{ namespaceSelector: {} }] }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-internal-services }
+spec:
+  podSelector: { matchExpressions: [{ key: app, operator: In, values: [stb-ai-service, core-banking-simulator, rne-simulator, sms-simulator, hr-simulator] }] }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app: stb-api } }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-platform-postgres }
+spec:
+  podSelector: { matchLabels: { app: stb-postgres } }
+  policyTypes: [Ingress]
+  ingress: [{ from: [{ podSelector: { matchLabels: { app: stb-api } } }], ports: [{ port: 5432 }] }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-simulator-databases }
+spec:
+  podSelector: { matchLabels: { stb.io/type: simulator-database } }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { stb.io/type: simulator } }

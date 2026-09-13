@@ -11,7 +11,10 @@ def create_app(testing: bool = False) -> Flask:
 
     @app.get("/health")
     def health():
-        return jsonify({"status": "UP", "service": "stb-sentinel-ai", "model": predictor.model_name,
-                        "modelVersion": predictor.model_version, "modelSource": predictor.model_source})
+        return jsonify({"status": "UP" if predictor.is_available else "DEGRADED",
+                        "service": "stb-sentinel-ai", "modelLoaded": predictor.is_available,
+                        "model": predictor.model_name, "modelVersion": predictor.model_version,
+                        "modelSource": predictor.model_source,
+                        "message": None if predictor.is_available else predictor.load_error})
 
     return app

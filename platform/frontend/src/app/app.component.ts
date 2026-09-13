@@ -4,6 +4,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { NgIf } from '@angular/common';
 import { AuthService } from './core/auth.service';
 import { OperationsService } from './core/operations.service';
+import { API_ORIGIN } from './core/api-url';
 
 @Component({
   selector: 'app-root',
@@ -21,7 +22,7 @@ export class AppComponent implements OnInit {
   ngOnInit(){if(this.auth.token())this.operations.notifications().subscribe({next:x=>this.unreadCount=x.filter(n=>!n.isRead).length,error:()=>{}})}
   logout(){this.auth.logout();this.router.navigate(['/login']);}
   closeSidebar(){this.sidebarOpen=false;}
-  avatar(user:{avatarUrl?:string}){return user.avatarUrl?`http://localhost:5041${user.avatarUrl}`:'/default-avatar.svg';}
+  avatar(user:{avatarUrl?:string}){return user.avatarUrl?`${API_ORIGIN}${user.avatarUrl}`:'/default-avatar.svg';}
   roleLabel(role:string){return({ADMIN:'Administrateur',SUPERVISOR:'Superviseur',TECHNICIAN:'Technicien',MANAGER_IT:'Manager IT'}as Record<string,string>)[role]||role;}
   toggleTheme(){this.darkMode=!this.darkMode;localStorage.setItem('stb_theme',this.darkMode?'dark':'light')}
 }

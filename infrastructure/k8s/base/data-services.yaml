@@ -1,0 +1,130 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: stb-postgres }
+spec:
+  serviceName: stb-postgres
+  replicas: 1
+  selector: { matchLabels: { app: stb-postgres } }
+  template:
+    metadata: { labels: { app: stb-postgres } }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports: [{ name: postgres, containerPort: 5432 }]
+          envFrom: [{ secretRef: { name: stb-database-env } }]
+          volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
+          readinessProbe: { exec: { command: ["sh", "-c", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"] }, initialDelaySeconds: 10, periodSeconds: 10 }
+          resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: 750m, memory: 1Gi } }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 5Gi } } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: stb-postgres }
+spec: { selector: { app: stb-postgres }, ports: [{ name: postgres, port: 5432 }] }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: rne-mongodb }
+spec:
+  serviceName: rne-mongodb
+  replicas: 1
+  selector: { matchLabels: { app: rne-mongodb } }
+  template:
+    metadata: { labels: { app: rne-mongodb, stb.io/type: simulator-database } }
+    spec:
+      containers:
+        - name: mongodb
+          image: mongo:8.0
+          ports: [{ name: mongo, containerPort: 27017 }]
+          envFrom: [{ secretRef: { name: rne-database-env } }]
+          volumeMounts: [{ name: data, mountPath: /data/db }]
+          resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: 750m, memory: 1Gi } }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 3Gi } } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: rne-mongodb }
+spec: { selector: { app: rne-mongodb }, ports: [{ name: mongo, port: 27017 }] }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: sms-mysql }
+spec:
+  serviceName: sms-mysql
+  replicas: 1
+  selector: { matchLabels: { app: sms-mysql } }
+  template:
+    metadata: { labels: { app: sms-mysql, stb.io/type: simulator-database } }
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.4
+          ports: [{ name: mysql, containerPort: 3306 }]
+          envFrom: [{ secretRef: { name: sms-database-env } }]
+          volumeMounts: [{ name: data, mountPath: /var/lib/mysql }]
+          resources: { requests: { cpu: 150m, memory: 384Mi }, limits: { cpu: 1, memory: 1Gi } }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 3Gi } } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: sms-mysql }
+spec: { selector: { app: sms-mysql }, ports: [{ name: mysql, port: 3306 }] }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: hr-sqlserver }
+spec:
+  serviceName: hr-sqlserver
+  replicas: 1
+  selector: { matchLabels: { app: hr-sqlserver } }
+  template:
+    metadata: { labels: { app: hr-sqlserver, stb.io/type: simulator-database } }
+    spec:
+      containers:
+        - name: sqlserver
+          image: mcr.microsoft.com/mssql/server:2022-latest
+          ports: [{ name: sqlserver, containerPort: 1433 }]
+          envFrom: [{ secretRef: { name: hr-database-env } }]
+          volumeMounts: [{ name: data, mountPath: /var/opt/mssql }]
+          resources: { requests: { cpu: 250m, memory: 1Gi }, limits: { cpu: 2, memory: 3Gi } }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 5Gi } } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: hr-sqlserver }
+spec: { selector: { app: hr-sqlserver }, ports: [{ name: sqlserver, port: 1433 }] }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: { name: core-oracle }
+spec:
+  serviceName: core-oracle
+  replicas: 1
+  selector: { matchLabels: { app: core-oracle } }
+  template:
+    metadata: { labels: { app: core-oracle, stb.io/type: simulator-database } }
+    spec:
+      containers:
+        - name: oracle
+          image: gvenzl/oracle-free:23-slim-faststart
+          ports: [{ name: oracle, containerPort: 1521 }]
+          envFrom: [{ secretRef: { name: core-database-env } }]
+          volumeMounts: [{ name: data, mountPath: /opt/oracle/oradata }]
+          resources: { requests: { cpu: 500m, memory: 1Gi }, limits: { cpu: 2, memory: 3Gi } }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 8Gi } } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: core-oracle }
+spec: { selector: { app: core-oracle }, ports: [{ name: oracle, port: 1521 }] }

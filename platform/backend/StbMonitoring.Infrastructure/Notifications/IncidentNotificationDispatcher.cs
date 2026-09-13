@@ -1,10 +1,10 @@
-using Microsoft.EntityFrameworkCore;using Microsoft.Extensions.Configuration;using StbMonitoring.Application.Interfaces;using StbMonitoring.Domain.Constants;using StbMonitoring.Domain.Entities;using StbMonitoring.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;using Microsoft.Extensions.Configuration;using Microsoft.Extensions.Logging;using StbMonitoring.Application.Interfaces;using StbMonitoring.Domain.Constants;using StbMonitoring.Domain.Entities;using StbMonitoring.Infrastructure.Persistence;
 namespace StbMonitoring.Infrastructure.Notifications;
 /// <summary>
 /// Envoie l'e-mail d'affectation quelle que soit la priorité, ajoute un SMS pour
 /// un P1 critique et programme son escalade persistante vers le superviseur.
 /// </summary>
-public sealed class IncidentNotificationDispatcher(MonitoringDbContext db,INotificationChannel channel,IConfiguration configuration):IIncidentNotificationDispatcher
+public sealed class IncidentNotificationDispatcher(MonitoringDbContext db,INotificationChannel channel,IConfiguration configuration,ILogger<IncidentNotificationDispatcher> logger):IIncidentNotificationDispatcher
 {
  public async Task NotifyAssignmentAsync(Incident incident,CancellationToken ct)
  {
@@ -28,6 +28,28 @@ public sealed class IncidentNotificationDispatcher(MonitoringDbContext db,INotif
    </div>
   </div>
   """;
-  await channel.SendEmailAsync(user.Email,subject,html,ct);
+  var result=await channel.SendEmailAsync(user.Email,subject,html,ct);
+  if(result.Success)
+  {
+   logger.LogInformation("E-mail d'affectation envoyé pour l'incident {IncidentNumber} au technicien {TechnicianId} via {Provider}.",incident.IncidentNumber,user.Id,result.Provider);
+   return;
+  }
+
+  // Une affectation métier reste valide même si Gmail est temporairement indisponible.
+  // L'échec est cependant rendu visible au superviseur et conservé dans les logs.
+  logger.LogError("Échec de l'e-mail d'affectation pour l'incident {IncidentNumber} au technicien {TechnicianId} via {Provider}: {Error}",incident.IncidentNumber,user.Id,result.Provider,result.Error);
+  if(incident.AssignedByUserId.HasValue)
+  {
+   db.Notifications.Add(new Notification(
+    incident.AssignedByUserId.Value,
+    "ASSIGNMENT_EMAIL_FAILED",
+    $"E-mail non remis — {incident.IncidentNumber}",
+    $"L'incident est affecté à {user.FirstName} {user.LastName}, mais Gmail n'a pas remis l'e-mail. Vérifiez le canal SMTP puis renvoyez l'affectation. Détail : {result.Error ?? "erreur inconnue"}",
+    AlertSeverity.Major,
+    "Incident",
+    incident.Id,
+    $"/incidents/{incident.Id}"));
+   await db.SaveChangesAsync(ct);
+  }
  }
 }

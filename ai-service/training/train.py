@@ -41,7 +41,9 @@ def train(dataset: Path, model_dir: Path, version: str):
         y = np.array([int(row[f"failure_{horizon}m"]) for row in rows])
         if len(np.unique(y[:train_end])) < 2 or len(np.unique(y[validation_end:])) < 2:
             raise ValueError(f"Horizon {horizon}: entraînement et test doivent contenir panne=0 et panne=1.")
-        model = RandomForestClassifier(n_estimators=300, max_depth=12, min_samples_leaf=5, class_weight="balanced", random_state=2026+horizon, n_jobs=-1)
+        # Un seul worker évite la création massive de threads Joblib observée
+        # sur Windows. L'entraînement reste hors du processus Flask.
+        model = RandomForestClassifier(n_estimators=300, max_depth=12, min_samples_leaf=5, class_weight="balanced", random_state=2026+horizon, n_jobs=1)
         model.fit(x[:train_end], y[:train_end])
         threshold = select_threshold(y[train_end:validation_end], model.predict_proba(x[train_end:validation_end])[:, 1])
         model.fit(x[:validation_end], y[:validation_end])
@@ -70,4 +72,3 @@ if __name__ == "__main__":
     parser=argparse.ArgumentParser(); parser.add_argument("--dataset",default="data/processed/system_risk_features.csv")
     parser.add_argument("--models",default="models"); parser.add_argument("--version",default=datetime.now().strftime("stb-%Y.%m.%d")); args=parser.parse_args()
     report=train(Path(args.dataset),Path(args.models),args.version); print(json.dumps(report,indent=2))
-

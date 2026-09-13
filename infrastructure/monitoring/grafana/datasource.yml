@@ -1,0 +1,10 @@
+# La source Prometheus est disponible dès le premier démarrage de Grafana.
+apiVersion: 1
+datasources:
+  - name: STB Prometheus
+    uid: stb-prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true

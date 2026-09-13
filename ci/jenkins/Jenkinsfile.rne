@@ -1,0 +1,2 @@
+def componentPipeline = load 'ci/jenkins/simulatorPipeline.groovy'
+componentPipeline.call(name: 'rne', project: 'RneSimulator', image: 'rne-simulator')

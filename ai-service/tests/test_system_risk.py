@@ -1,4 +1,6 @@
 from app import create_app
+from app.services.system_risk_service import SystemRiskPredictor
+import pytest
 
 
 def payload(durations, statuses=None, errors=None):
@@ -37,6 +39,24 @@ def test_invalid_payload_returns_400():
     assert response.status_code == 400
 
 
+def test_health_confirms_that_a_saved_model_is_loaded():
+    app = create_app(testing=True)
+    with app.test_client() as client:
+        response = client.get("/health")
+        body = response.get_json()
+    assert response.status_code == 200
+    assert body["status"] == "UP"
+    assert body["modelLoaded"] is True
+    assert body["modelVersion"] == "test-synthetic"
+
+
+def test_predictor_without_artifacts_fails_cleanly(tmp_path):
+    unavailable = SystemRiskPredictor(tmp_path)
+    assert unavailable.is_available is False
+    with pytest.raises(RuntimeError, match="Manifest absent"):
+        unavailable.predict(payload([100, 110, 120]))
+
+
 def test_evaluation_uses_an_independent_holdout_and_exposes_metrics():
     app = create_app(testing=True)
     with app.test_client() as client:
@@ -71,3 +91,19 @@ def test_incident_resolution_recommends_the_most_similar_history():
     assert result["modelName"]=="tfidf-cosine-retrieval"
     assert result["recommendations"][0]["incidentNumber"]=="INC-002"
     assert result["recommendations"][0]["correctiveAction"]=="Redémarrer le pool MongoDB"
+    assert "Même système d'information" in result["recommendations"][0]["matchReasons"]
+
+
+def test_technician_assignment_prefers_matching_experience_and_lower_workload():
+    app = create_app(testing=True)
+    body = {"incident":{"id":"1","title":"Timeout MongoDB RNE","description":"base mongo indisponible","category":"Database","priority":"P1Critical","systemId":"rne","systemName":"RNE"},
+            "technicians":[
+                {"technicianId":"a","firstName":"Ali","lastName":"Mongo","skills":["MongoDB","Base de données"],"available":True,"activeIncidentCount":1,"totalResolvedCount":10,"similarResolvedCount":4,"systemResolvedCount":3},
+                {"technicianId":"b","firstName":"Sami","lastName":"TLS","skills":["TLS"],"available":True,"activeIncidentCount":4,"totalResolvedCount":2,"similarResolvedCount":0,"systemResolvedCount":0}]}
+    with app.test_client() as client:
+        response=client.post("/api/v1/predictions/technician-assignment",json=body)
+        result=response.get_json()
+    assert response.status_code==200
+    assert result["recommendations"][0]["technicianId"]=="a"
+    assert result["recommendations"][0]["score"]>result["recommendations"][1]["score"]
+    assert result["recommendations"][0]["reasons"]

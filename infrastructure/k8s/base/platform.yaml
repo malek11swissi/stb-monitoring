@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: stb-api }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: stb-api } }
+  template:
+    metadata: { labels: { app: stb-api } }
+    spec:
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: api
+          image: registry.local/stb-monitoring/api:latest
+          ports: [{ name: http, containerPort: 8080 }]
+          env:
+            - { name: ASPNETCORE_ENVIRONMENT, valueFrom: { configMapKeyRef: { name: stb-config, key: ASPNETCORE_ENVIRONMENT } } }
+            - { name: Ai__BaseUrl, valueFrom: { configMapKeyRef: { name: stb-config, key: AI_BASE_URL } } }
+            - { name: FrontendUrl, value: "https://stb-monitoring.local" }
+            - { name: ConnectionStrings__PostgreSql, valueFrom: { secretKeyRef: { name: stb-secrets, key: postgres-connection } } }
+            - { name: Jwt__Key, valueFrom: { secretKeyRef: { name: stb-secrets, key: jwt-key } } }
+            - { name: Notifications__Email__Mode, value: "Smtp" }
+            - { name: Notifications__Email__Provider, value: "GmailSmtp" }
+            - { name: Notifications__Email__Host, value: "smtp.gmail.com" }
+            - { name: Notifications__Email__Port, value: "587" }
+            - { name: Notifications__Email__UseTls, value: "true" }
+            - { name: Notifications__Email__Username, valueFrom: { secretKeyRef: { name: stb-secrets, key: smtp-username } } }
+            - { name: Notifications__Email__SenderEmail, valueFrom: { secretKeyRef: { name: stb-secrets, key: smtp-sender } } }
+            - { name: Notifications__Email__Password, valueFrom: { secretKeyRef: { name: stb-secrets, key: smtp-password } } }
+          readinessProbe: { httpGet: { path: /health, port: http }, initialDelaySeconds: 10, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /health, port: http }, initialDelaySeconds: 30, periodSeconds: 20 }
+          resources:
+            requests: { cpu: 150m, memory: 256Mi }
+            limits: { cpu: 750m, memory: 768Mi }
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: ["ALL"] }, readOnlyRootFilesystem: false }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: stb-api }
+spec: { selector: { app: stb-api }, ports: [{ name: http, port: 8080, targetPort: http }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: stb-frontend }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: stb-frontend } }
+  template:
+    metadata: { labels: { app: stb-frontend } }
+    spec:
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: frontend
+          image: registry.local/stb-monitoring/frontend:latest
+          ports: [{ name: http, containerPort: 8080 }]
+          readinessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 3, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /healthz, port: http }, initialDelaySeconds: 15, periodSeconds: 20 }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: ["ALL"] } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: stb-frontend }
+spec: { selector: { app: stb-frontend }, ports: [{ name: http, port: 8080, targetPort: http }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: stb-ai-service }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: stb-ai-service } }
+  template:
+    metadata: { labels: { app: stb-ai-service } }
+    spec:
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: ai-service
+          image: registry.local/stb-monitoring/ai-service:latest
+          ports: [{ name: http, containerPort: 5055 }]
+          readinessProbe: { httpGet: { path: /health, port: http }, initialDelaySeconds: 10, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /health, port: http }, initialDelaySeconds: 30, periodSeconds: 20 }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 750m, memory: 1Gi }
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: ["ALL"] } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: stb-ai-service }
+spec: { selector: { app: stb-ai-service }, ports: [{ name: http, port: 5055, targetPort: http }] }

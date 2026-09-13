@@ -1,0 +1,13 @@
+# Pipeline et affichage des stages
+workflow-aggregator
+pipeline-stage-view
+
+# GitHub et credentials
+git
+github
+credentials-binding
+
+# Qualité, tests et Docker
+sonar
+junit
+docker-workflow

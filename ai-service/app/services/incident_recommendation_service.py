@@ -27,11 +27,17 @@ class IncidentRecommendationService:
             bonus += .03 if item.get("priority") == current.get("priority") else 0
             score = min(1., float(similarity) + bonus)
             if score >= .05:
+                reasons = []
+                if item.get("systemId") == current.get("systemId"): reasons.append("Même système d'information")
+                if item.get("category") == current.get("category"): reasons.append("Même catégorie d'incident")
+                if item.get("priority") == current.get("priority"): reasons.append("Même niveau de priorité")
+                reasons.append("Description technique similaire")
                 ranked.append({"sourceIncidentId": item["id"], "incidentNumber": item["incidentNumber"],
                                "title": item["title"], "similarity": round(score, 4),
                                "sourceType": item.get("sourceType", "HistoricalIncident"),
                                "rootCause": item.get("rootCause"), "correctiveAction": item["correctiveAction"],
-                               "preventiveAction": item.get("preventiveAction"), "resolutionSummary": item.get("resolutionSummary")})
+                               "preventiveAction": item.get("preventiveAction"), "resolutionSummary": item.get("resolutionSummary"),
+                               "matchReasons": reasons})
         ranked.sort(key=lambda item: item["similarity"], reverse=True)
         return {"available": True, "modelName": "tfidf-cosine-retrieval", "modelVersion": "1.0.0",
                 "candidateCount": len(candidates), "recommendations": ranked[:3],

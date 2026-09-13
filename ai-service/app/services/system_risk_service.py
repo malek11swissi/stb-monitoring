@@ -22,24 +22,37 @@ class SystemRiskPredictor:
     model_name = "system-risk-random-forest"
     model_version = "1.2.0-synthetic-validated"
 
-    def __init__(self) -> None:
-        self.model_source = "synthetic"
+    def __init__(self, model_dir: Path | None = None) -> None:
+        self.model_source = "unavailable"
+        self.model_dir = model_dir or Path(os.getenv(
+            "AI_MODEL_DIR", str(Path(__file__).resolve().parents[2] / "models")
+        ))
+        self.models: dict[int, RandomForestClassifier] = {}
+        self.evaluation: dict = {
+            "available": False,
+            "message": "Aucun modèle validé n'est chargé. Exécutez training/train_synthetic.py ou training/train.py.",
+        }
+        self.load_error: str | None = None
         self.thresholds = {horizon: 0.5 for horizon in HORIZONS}
-        if not self._load_stb_models():
-            self.models, self.evaluation = self._train_and_evaluate_synthetic_models()
-            self.thresholds = {
-                int(horizon): values["decisionThreshold"]
-                for horizon, values in self.evaluation["horizons"].items()
-            }
+        self.reload()
+
+    @property
+    def is_available(self) -> bool:
+        return all(horizon in self.models for horizon in HORIZONS)
+
+    def reload(self) -> bool:
+        """Recharge uniquement des artefacts déjà entraînés et validés."""
+        self.models = {}
+        self.load_error = None
+        return self._load_stb_models()
 
     def _load_stb_models(self) -> bool:
         """Charge les artefacts validés sans changer le code; False active le fallback démo."""
-        default_dir = Path(__file__).resolve().parents[2] / "models"
-        model_dir = Path(os.getenv("AI_MODEL_DIR", str(default_dir)))
-        manifest_path = model_dir / "manifest.json"
-        evaluation_path = model_dir / "evaluation.json"
+        manifest_path = self.model_dir / "manifest.json"
+        evaluation_path = self.model_dir / "evaluation.json"
         try:
             if not manifest_path.exists():
+                self.load_error = f"Manifest absent: {manifest_path}"
                 return False
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             if manifest.get("status") != "validated" or manifest.get("featureNames") != list(FEATURE_NAMES):
@@ -47,17 +60,21 @@ class SystemRiskPredictor:
             loaded = {}
             thresholds = {}
             for horizon in HORIZONS:
-                artifact = joblib.load(model_dir / manifest["artifacts"][str(horizon)])
+                artifact = joblib.load(self.model_dir / manifest["artifacts"][str(horizon)])
+                if artifact.get("featureNames") != list(FEATURE_NAMES):
+                    raise ValueError(f"Schéma de features incompatible pour {horizon} minutes.")
                 loaded[horizon] = artifact["model"]
                 thresholds[horizon] = float(artifact["decisionThreshold"])
             self.models = loaded
             self.thresholds = thresholds
             self.model_name = manifest.get("modelName", self.model_name)
             self.model_version = manifest["modelVersion"]
-            self.model_source = "stb-real"
+            self.model_source = manifest.get("modelSource", "unknown")
             self.evaluation = json.loads(evaluation_path.read_text(encoding="utf-8"))
             return True
-        except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+        except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            self.load_error = str(exc)
+            self.models = {}
             return False
 
     def evaluation_report(self) -> dict:
@@ -65,6 +82,8 @@ class SystemRiskPredictor:
         return self.evaluation
 
     def predict(self, payload: dict) -> dict:
+        if not self.is_available:
+            raise RuntimeError(self.load_error or "Aucun modèle IA validé n'est chargé.")
         features, endpoint_risks, sample_count = self._extract_features(payload)
         vector = np.array([[features[name] for name in FEATURE_NAMES]], dtype=float)
         probabilities = {h: float(self.models[h].predict_proba(vector)[0, 1]) for h in (15, 30, 60)}
@@ -160,10 +179,15 @@ class SystemRiskPredictor:
             "status_instability": changes / max(1, len(statuses) - 1),
         }
 
-    def _train_and_evaluate_synthetic_models(self) -> tuple[dict[int, RandomForestClassifier], dict]:
+    def train_synthetic_models(self) -> tuple[dict[int, RandomForestClassifier], dict]:
         """Génère 6 000 cas reproductibles, réserve 20 % au test puis évalue chaque horizon."""
         rng = np.random.default_rng(20260825)
         count = 6000
+        # Le fallback est entraîné au démarrage uniquement lorsqu'aucun modèle
+        # STB validé n'est présent. 80 arbres offrent un démarrage local rapide.
+        # La CI ou l'exploitation peut augmenter cette valeur via la variable
+        # AI_SYNTHETIC_TREES sans modifier le code.
+        tree_count = max(40, min(500, int(os.getenv("AI_SYNTHETIC_TREES", "80"))))
         x = rng.beta(1.4, 3.2, size=(count, len(FEATURE_NAMES)))
         # endpoint_count et maintenance sont distribués différemment.
         x[:, 1] = rng.uniform(0.03, 1, count)
@@ -200,7 +224,12 @@ class SystemRiskPredictor:
         metrics = {}
         for horizon in (15, 30, 60):
             y = labels[horizon]
-            model = RandomForestClassifier(n_estimators=240, max_depth=12, min_samples_leaf=5, class_weight="balanced", random_state=2026+horizon, n_jobs=-1)
+            # Le jeu de démonstration ne contient que 6 000 lignes. Utiliser
+            # tous les cœurs (n_jobs=-1) oblige Joblib à créer un grand pool de
+            # threads au démarrage et peut rester bloqué sur certains postes
+            # Windows. Un seul worker est ici plus prévisible et suffisamment
+            # rapide ; Jenkins pourra entraîner les modèles réels séparément.
+            model = RandomForestClassifier(n_estimators=tree_count, max_depth=12, min_samples_leaf=5, class_weight="balanced", random_state=2026+horizon, n_jobs=1)
             model.fit(x[train_indices], y[train_indices])
             validation_probabilities = model.predict_proba(x[validation_indices])[:, 1]
             threshold = self._select_recall_threshold(y[validation_indices], validation_probabilities)
@@ -240,6 +269,35 @@ class SystemRiskPredictor:
             "warning": "Ces métriques mesurent uniquement les scénarios synthétiques et ne prouvent pas la performance sur les SI réels de STB.",
             "horizons": metrics,
         }
+
+    def publish_synthetic_models(self, version: str) -> dict:
+        """Entraîne hors Flask, sauvegarde les artefacts puis publie un manifest validé."""
+        models, evaluation = self.train_synthetic_models()
+        self.model_dir.mkdir(parents=True, exist_ok=True)
+        artifacts: dict[str, str] = {}
+        for horizon, model in models.items():
+            filename = f"system_risk_{horizon}m.joblib"
+            threshold = float(evaluation["horizons"][str(horizon)]["decisionThreshold"])
+            joblib.dump({
+                "model": model,
+                "decisionThreshold": threshold,
+                "featureNames": list(FEATURE_NAMES),
+            }, self.model_dir / filename)
+            artifacts[str(horizon)] = filename
+        evaluation["modelVersion"] = version
+        manifest = {
+            "status": "validated",
+            "modelName": self.model_name,
+            "modelVersion": version,
+            "modelSource": "synthetic",
+            "trainedAt": datetime.now(timezone.utc).isoformat(),
+            "featureNames": list(FEATURE_NAMES),
+            "artifacts": artifacts,
+        }
+        (self.model_dir / "evaluation.json").write_text(json.dumps(evaluation, indent=2), encoding="utf-8")
+        (self.model_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+        self.reload()
+        return evaluation
 
     @staticmethod
     def _select_recall_threshold(true: np.ndarray, probabilities: np.ndarray) -> float:

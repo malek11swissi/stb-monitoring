@@ -1,0 +1,5 @@
+/* Une chronologie continue est plus lisible qu'une pagination pour un incident. */
+.activity-list{max-height:440px;overflow-y:auto;overscroll-behavior:contain;padding:2px 8px 6px 2px;scrollbar-width:thin;scrollbar-color:#8fbfc2 #e9f0f2}
+.activity-list::-webkit-scrollbar{width:8px}.activity-list::-webkit-scrollbar-track{background:#e9f0f2;border-radius:10px}.activity-list::-webkit-scrollbar-thumb{background:linear-gradient(#2cb5c0,#087e8b);border-radius:10px;border:2px solid #e9f0f2}
+.activity:has(.activity-list article:nth-child(7))>header:after{content:'Faire défiler pour consulter la suite';margin-left:8px;padding:5px 8px;border-radius:7px;background:#eef6f6;color:#087e8b;font-size:9px;font-weight:800}
+@media(max-width:700px){.activity-list{max-height:520px}}

@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: core-banking-simulator }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: core-banking-simulator } }
+  template:
+    metadata: { labels: { app: core-banking-simulator, stb.io/type: simulator } }
+    spec:
+      containers:
+        - name: simulator
+          image: registry.local/stb-monitoring/core-banking-simulator:latest
+          ports: [{ name: http, containerPort: 8080 }]
+          env:
+            - { name: ConnectionStrings__Oracle, valueFrom: { secretKeyRef: { name: stb-secrets, key: oracle-connection } } }
+            - { name: Lab__AdminKey, valueFrom: { secretKeyRef: { name: stb-secrets, key: lab-key } } }
+          readinessProbe: { httpGet: { path: /api/lab/scenario, port: http }, initialDelaySeconds: 20, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /api/lab/scenario, port: http }, initialDelaySeconds: 45, periodSeconds: 20 }
+          resources: { requests: { cpu: 75m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: ["ALL"] } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: core-banking-simulator }
+spec: { selector: { app: core-banking-simulator }, ports: [{ name: http, port: 8080, targetPort: http }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: rne-simulator }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: rne-simulator } }
+  template:
+    metadata: { labels: { app: rne-simulator, stb.io/type: simulator } }
+    spec:
+      containers:
+        - name: simulator
+          image: registry.local/stb-monitoring/rne-simulator:latest
+          ports: [{ name: http, containerPort: 8080 }]
+          env:
+            - { name: MongoDb__ConnectionString, valueFrom: { secretKeyRef: { name: stb-secrets, key: mongo-connection } } }
+            - { name: Lab__AdminKey, valueFrom: { secretKeyRef: { name: stb-secrets, key: lab-key } } }
+          readinessProbe: { httpGet: { path: /api/lab/scenario, port: http }, initialDelaySeconds: 10, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /api/lab/scenario, port: http }, initialDelaySeconds: 30, periodSeconds: 20 }
+          resources: { requests: { cpu: 75m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: ["ALL"] } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: rne-simulator }
+spec: { selector: { app: rne-simulator }, ports: [{ name: http, port: 8080, targetPort: http }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: sms-simulator }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: sms-simulator } }
+  template:
+    metadata: { labels: { app: sms-simulator, stb.io/type: simulator } }
+    spec:
+      containers:
+        - name: simulator
+          image: registry.local/stb-monitoring/sms-simulator:latest
+          ports: [{ name: http, containerPort: 8080 }]
+          env:
+            - { name: ConnectionStrings__MySql, valueFrom: { secretKeyRef: { name: stb-secrets, key: mysql-connection } } }
+            - { name: Lab__AdminKey, valueFrom: { secretKeyRef: { name: stb-secrets, key: lab-key } } }
+          readinessProbe: { httpGet: { path: /api/lab/scenario, port: http }, initialDelaySeconds: 10, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /api/lab/scenario, port: http }, initialDelaySeconds: 30, periodSeconds: 20 }
+          resources: { requests: { cpu: 75m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: ["ALL"] } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: sms-simulator }
+spec: { selector: { app: sms-simulator }, ports: [{ name: http, port: 8080, targetPort: http }] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: hr-simulator }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: hr-simulator } }
+  template:
+    metadata: { labels: { app: hr-simulator, stb.io/type: simulator } }
+    spec:
+      containers:
+        - name: simulator
+          image: registry.local/stb-monitoring/hr-simulator:latest
+          ports: [{ name: http, containerPort: 8080 }]
+          env:
+            - { name: ConnectionStrings__SqlServer, valueFrom: { secretKeyRef: { name: stb-secrets, key: sqlserver-connection } } }
+            - { name: Lab__AdminKey, valueFrom: { secretKeyRef: { name: stb-secrets, key: lab-key } } }
+          readinessProbe: { httpGet: { path: /api/lab/scenario, port: http }, initialDelaySeconds: 15, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /api/lab/scenario, port: http }, initialDelaySeconds: 40, periodSeconds: 20 }
+          resources: { requests: { cpu: 75m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: ["ALL"] } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: hr-simulator }
+spec: { selector: { app: hr-simulator }, ports: [{ name: http, port: 8080, targetPort: http }] }

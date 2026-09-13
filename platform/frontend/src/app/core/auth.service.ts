@@ -2,11 +2,14 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
-export interface User { id:string; username:string; email:string; firstName:string; lastName:string; role:string; roles?:string[]; isActive:boolean; createdAt:string; lastLoginAt?:string; avatarUrl?:string; phoneNumber?:string; jobTitle?:string; skills:string[]; badge:string; resolvedIncidents:number; }
+import { API_ROOT } from './api-url';
+export interface TechnicianBadge {code:string;name:string;description:string;icon:string;unlocked:boolean;current:number;target:number;tier:string}
+export interface TechnicianPerformance {resolvedIncidents:number;slaComplianceRate:number;primarySpecialty:string;meanResolutionMinutes:number;experiencePoints:number;level:number;nextLevelExperience:number;progressPercent:number;badges:TechnicianBadge[]}
+export interface User { id:string; username:string; email:string; firstName:string; lastName:string; role:string; roles?:string[]; isActive:boolean; createdAt:string; lastLoginAt?:string; avatarUrl?:string; phoneNumber?:string; jobTitle?:string; skills:string[]; badge:string; resolvedIncidents:number;technicianPerformance?:TechnicianPerformance }
 export interface LoginResponse { token?:string; expiresAt?:string; user?:User; requiresTwoFactor:boolean; challengeToken?:string; }
 @Injectable({providedIn:'root'})
 export class AuthService {
-  private readonly api='http://localhost:5041/api';
+  private readonly api=API_ROOT;
   readonly currentUser=signal<User|null>(this.readUser());
   constructor(private http:HttpClient){}
   login(usernameOrEmail:string,password:string):Observable<LoginResponse>{return this.http.post<LoginResponse>(`${this.api}/auth/login`,{usernameOrEmail,password}).pipe(tap(x=>this.persistSession(x)));}

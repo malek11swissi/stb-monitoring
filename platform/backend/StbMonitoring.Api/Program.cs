@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.HttpOverrides;
 using StbMonitoring.Api.Security;
 using StbMonitoring.Api.Middleware;
 using StbMonitoring.Application.Interfaces;
@@ -64,9 +65,16 @@ builder.Services.AddCors(options => options.AddPolicy("Frontend", policy =>
     policy.AllowAnyHeader().AllowAnyMethod();
 }));
 builder.Services.AddExceptionHandler<ApiExceptionHandler>(); builder.Services.AddProblemDetails();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 var app=builder.Build();
 if(app.Environment.IsDevelopment()){app.UseSwagger();app.UseSwaggerUI();}
 app.UseExceptionHandler();
+app.UseForwardedHeaders();
 app.UseStaticFiles();
 if (!app.Environment.IsDevelopment()) app.UseHttpsRedirection();
 app.UseCors("Frontend");app.UseAuthentication();app.UseAuthorization();app.MapControllers();app.MapGet("/health",()=>Results.Ok(new{status="UP",service="stb-monitoring-api"}));

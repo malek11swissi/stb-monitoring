@@ -4,6 +4,7 @@ import {FormsModule} from '@angular/forms';
 import {HttpClient} from '@angular/common/http';
 import {AuthService,User} from '../core/auth.service';
 import {CommonModule} from '@angular/common';
+import {API_ORIGIN,API_ROOT} from '../core/api-url';
 
 @Component({standalone:true,imports:[FormsModule,CommonModule],template:`
 <section class="page">
@@ -18,7 +19,7 @@ import {CommonModule} from '@angular/common';
   @if(deleteTarget){<div class="modal-backdrop" (click)="deleteTarget=null"><section class="card modal delete-modal" (click)="$event.stopPropagation()"><div class="danger-icon">!</div><h2>Supprimer définitivement ?</h2><p>Le compte <strong>{{deleteTarget.firstName}} {{deleteTarget.lastName}}</strong> (&#64;{{deleteTarget.username}}) sera supprimé sans possibilité de restauration.</p><div class="warning-box">Cette action est autorisée uniquement parce que ce compte ne possède aucune activité.</div><div class="modal-actions"><button (click)="deleteTarget=null">Annuler</button><button class="danger-action" (click)="removePermanently()">Supprimer définitivement</button></div></section></div>}
 </section>`,styles:[`.user-cell{display:flex;align-items:center;gap:11px}.user-cell img{width:42px;height:42px;object-fit:cover;border-radius:12px;background:#eaf4f6;border:1px solid #d7e5e9}.user-cell span{display:grid}.user-cell small{margin-top:3px;color:#61727e}.danger-action{color:#fff!important;background:#b42318!important;border-color:#b42318!important}.danger-action:hover{background:#8f1c13!important;transform:translateY(-1px)}.delete-modal{text-align:center;max-width:500px}.danger-icon{display:grid;place-items:center;width:52px;height:52px;margin:0 auto 12px;border-radius:16px;background:#fee4e2;color:#b42318;font-size:28px;font-weight:800}.warning-box{margin:16px 0;padding:12px;border:1px solid #fecdca;border-radius:10px;background:#fff6f5;color:#912018;text-align:left}.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}`]})
 export class UsersComponent implements OnInit{
- users:User[]=[];readonly roles=['ADMIN','SUPERVISOR','TECHNICIAN','MANAGER_IT'];query='';showCreate=false;selected:User|null=null;deleteTarget:User|null=null;eligibility:Partial<Record<string,{canDelete:boolean;reason:string}>>={};message='';error='';readonly base='http://localhost:5041/api';
+ users:User[]=[];readonly roles=['ADMIN','SUPERVISOR','TECHNICIAN','MANAGER_IT'];query='';showCreate=false;selected:User|null=null;deleteTarget:User|null=null;eligibility:Partial<Record<string,{canDelete:boolean;reason:string}>>={};message='';error='';readonly base=API_ROOT;
  draft={username:'',firstName:'',lastName:'',email:'',role:'TECHNICIAN'};editDraft={firstName:'',lastName:'',email:'',role:''};
  constructor(private http:HttpClient,public auth:AuthService){}
  get filtered(){const q=this.query.trim().toLowerCase();return this.users.filter(u=>!q||[u.firstName,u.lastName,u.username,u.email,u.role,u.isActive?'actif':'inactif'].some(v=>v.toLowerCase().includes(q)))}
@@ -30,6 +31,6 @@ export class UsersComponent implements OnInit{
  save(){if(!this.selected)return;this.clear();this.http.put<User>(`${this.base}/users/${this.selected.id}`,this.editDraft).subscribe({next:()=>{this.selected=null;this.message='Utilisateur modifié.';this.load()},error:e=>this.fail(e)})}
  active(u:User){this.clear();this.http.patch(`${this.base}/users/${u.id}/active?value=${!u.isActive}`,{}).subscribe({next:()=>{u.isActive=!u.isActive;this.message=`Compte ${u.isActive?'activé':'désactivé'}.`},error:e=>this.fail(e)})}
  removePermanently(){if(!this.deleteTarget)return;const username=this.deleteTarget.username;this.clear();this.http.delete(`${this.base}/users/${this.deleteTarget.id}`).subscribe({next:()=>{this.deleteTarget=null;this.message=`Le compte ${username} a été supprimé définitivement.`;this.load()},error:e=>{this.deleteTarget=null;this.fail(e)}})}
- avatar(u:User){return u.avatarUrl?`http://localhost:5041${u.avatarUrl}`:'/default-avatar.svg'}
+ avatar(u:User){return u.avatarUrl?`${API_ORIGIN}${u.avatarUrl}`:'/default-avatar.svg'}
  clear(){this.message='';this.error=''} fail(e:any){this.error=e.error?.message||'Opération impossible.'}
 }

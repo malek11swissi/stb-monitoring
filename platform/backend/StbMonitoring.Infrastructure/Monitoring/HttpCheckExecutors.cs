@@ -54,9 +54,11 @@ public sealed class TlsCheckExecutor : ICheckExecutor
 {
     public CheckType Type => CheckType.Tls;
 
+//verification tls de url -m
     public async Task<CheckExecution> ExecuteAsync(MonitoringEndpoint e, CancellationToken ct)
     {
-        var started = DateTime.UtcNow; var sw = Stopwatch.StartNew();
+        var started = DateTime.UtcNow; 
+        var sw = Stopwatch.StartNew();
         try
         {
             var uri = new Uri(e.Url);

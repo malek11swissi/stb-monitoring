@@ -6,6 +6,7 @@
 # dotenv files
 .env
 **/appsettings.Local.json
+infrastructure/k8s/secrets.yaml
 
 # User-specific files
 *.rsuser

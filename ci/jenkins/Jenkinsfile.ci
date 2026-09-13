@@ -1,0 +1,45 @@
+/* Job automatique stb-monitoring-ci : compile, teste, construit et publie les images. */
+pipeline {
+  agent any
+  options { timestamps(); disableConcurrentBuilds(); timeout(time: 60, unit: 'MINUTES') }
+  parameters {
+    booleanParam(name: 'PUBLISH_IMAGES', defaultValue: false, description: 'Publier dans Nexus après sa configuration')
+  }
+  environment {
+    COMPOSE_FILE='infrastructure/docker/docker-compose.yml'
+    NEXUS_REGISTRY='localhost:8082'
+  }
+  stages {
+    stage('Checkout Git') { steps { checkout scm } }
+    stage('Restauration et validation') {
+      parallel {
+        stage('Backend et simulateurs .NET') {
+          steps { sh 'dotnet restore StbMonitoring.sln && dotnet test StbMonitoring.sln -c Release --no-restore --collect:"XPlat Code Coverage"' }
+        }
+        stage('Frontend Angular') {
+          steps { dir('platform/frontend') { sh 'npm ci && npm run build' } }
+        }
+        stage('Service IA Python') {
+          steps { dir('ai-service') { sh 'python3 -m pip install -r requirements.txt && python3 -m pytest -q' } }
+        }
+      }
+    }
+    stage('Construction des images') {
+      steps {
+        script { env.IMAGE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT.take(8)}" }
+        sh 'IMAGE_TAG=$IMAGE_TAG docker compose -f $COMPOSE_FILE --profile simulators build api frontend ai-service core-banking-simulator rne-simulator sms-simulator hr-simulator'
+      }
+    }
+    stage('Publication Nexus') {
+      when { expression { params.PUBLISH_IMAGES } }
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'nexus-credentials', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD')]) {
+          sh '''echo "$NEXUS_PASSWORD" | docker login "$NEXUS_REGISTRY" -u "$NEXUS_USER" --password-stdin
+IMAGE_TAG=$IMAGE_TAG NEXUS_REGISTRY=$NEXUS_REGISTRY docker compose -f $COMPOSE_FILE --profile simulators push api frontend ai-service core-banking-simulator rne-simulator sms-simulator hr-simulator
+docker logout "$NEXUS_REGISTRY"'''
+        }
+      }
+    }
+  }
+  post { always { archiveArtifacts allowEmptyArchive: true, artifacts: '**/TestResults/**,ai-service/models/evaluation.json' } }
+}

@@ -11,7 +11,10 @@ public sealed record UpdateProfileRequest([Required,EmailAddress] string Email, 
 public sealed record ChangePasswordRequest([Required] string CurrentPassword, [Required,MinLength(10)] string NewPassword);
 public sealed record ForgotPasswordRequest([Required,EmailAddress] string Email);
 public sealed record ResetPasswordRequest([Required] string Token, [Required,MinLength(10)] string NewPassword);
-public sealed record UserResponse(Guid Id, string Username, string Email, string FirstName, string LastName, string Role, bool IsActive, DateTime CreatedAt, DateTime? LastLoginAt, string? AvatarUrl, string? PhoneNumber, string? JobTitle, string[] Skills, string Badge, int ResolvedIncidents);
+public sealed record UserResponse(Guid Id, string Username, string Email, string FirstName, string LastName, string Role, bool IsActive, DateTime CreatedAt, DateTime? LastLoginAt, string? AvatarUrl, string? PhoneNumber, string? JobTitle, string[] Skills, string Badge, int ResolvedIncidents,TechnicianPerformanceResponse? TechnicianPerformance=null);
+public sealed record TechnicianPerformanceResponse(int ResolvedIncidents,double SlaComplianceRate,string PrimarySpecialty,double MeanResolutionMinutes,int ExperiencePoints,int Level,int NextLevelExperience,int ProgressPercent,IReadOnlyCollection<TechnicianBadgeResponse> Badges);
+public sealed record TechnicianBadgeResponse(string Code,string Name,string Description,string Icon,bool Unlocked,int Current,int Target,string Tier);
+public sealed record TechnicianResolvedIncidentStat(string Category,string Priority,string SlaStatus,int ReopenCount,DateTime CreatedAt,DateTime? ResolvedAt,Guid? SystemId);
 public sealed record AuditLogResponse(Guid Id, Guid? UserId, string Action, string EntityName, Guid? EntityId, string? Detail, string? IpAddress, DateTime CreatedAt, bool Success);
 public sealed record AuthenticatedUser(Guid Id, string Username, string Email, string Role, int SessionVersion);
 public sealed record TokenResult(string Token, DateTime ExpiresAt);

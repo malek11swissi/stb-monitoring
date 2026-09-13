@@ -1,0 +1,55 @@
+/* Job manuel stb-monitoring-cd : déploie uniquement une version déjà publiée dans Nexus. */
+pipeline {
+  agent any
+  options { timestamps(); disableConcurrentBuilds(); timeout(time: 30, unit: 'MINUTES') }
+  parameters { string(name: 'IMAGE_TAG', defaultValue: '', description: 'Tag Nexus obligatoire, par exemple 42-a1b2c3d4') }
+  environment {
+    COMPOSE_FILE='infrastructure/docker/docker-compose.yml'
+    NEXUS_REGISTRY='localhost:8082'
+  }
+  stages {
+    stage('Vérifier la version') {
+      steps { script { if (!params.IMAGE_TAG?.trim()) { error('IMAGE_TAG est obligatoire pour le CD.') } } }
+    }
+    stage('Checkout configuration') { steps { checkout scm } }
+    stage('Récupérer les images Nexus') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'nexus-credentials', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD')]) {
+          sh '''echo "$NEXUS_PASSWORD" | docker login "$NEXUS_REGISTRY" -u "$NEXUS_USER" --password-stdin
+IMAGE_TAG=$IMAGE_TAG NEXUS_REGISTRY=$NEXUS_REGISTRY docker compose -f $COMPOSE_FILE pull
+docker logout "$NEXUS_REGISTRY"'''
+        }
+      }
+    }
+    stage('Appliquer les migrations') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'postgres-credentials', usernameVariable: 'POSTGRES_USER', passwordVariable: 'POSTGRES_PASSWORD')]) {
+          sh '''POSTGRES_PASSWORD=$POSTGRES_PASSWORD docker compose -f $COMPOSE_FILE up -d --wait postgres
+dotnet tool update --global dotnet-ef || dotnet tool install --global dotnet-ef
+export PATH="$PATH:$HOME/.dotnet/tools"
+export ConnectionStrings__PostgreSql="Host=127.0.0.1;Port=55432;Database=stb_monitoring;Username=$POSTGRES_USER;Password=$POSTGRES_PASSWORD"
+dotnet ef database update --project platform/backend/StbMonitoring.Infrastructure/StbMonitoring.Infrastructure.csproj --startup-project platform/backend/StbMonitoring.Api/StbMonitoring.Api.csproj'''
+        }
+      }
+    }
+    stage('Déployer Docker Compose') {
+      steps {
+        withCredentials([
+          usernamePassword(credentialsId: 'postgres-credentials', usernameVariable: 'POSTGRES_USER', passwordVariable: 'POSTGRES_PASSWORD'),
+          usernamePassword(credentialsId: 'gmail-smtp-credentials', usernameVariable: 'EMAIL_USERNAME', passwordVariable: 'EMAIL_PASSWORD'),
+          string(credentialsId: 'jwt-secret', variable: 'JWT_KEY')
+        ]) {
+          sh '''IMAGE_TAG=$IMAGE_TAG NEXUS_REGISTRY=$NEXUS_REGISTRY POSTGRES_PASSWORD=$POSTGRES_PASSWORD JWT_KEY=$JWT_KEY EMAIL_MODE=Smtp EMAIL_USERNAME=$EMAIL_USERNAME EMAIL_PASSWORD=$EMAIL_PASSWORD EMAIL_SENDER=$EMAIL_USERNAME docker compose -f $COMPOSE_FILE up -d --no-build --wait'''
+        }
+      }
+    }
+    stage('Readiness et smoke tests') {
+      steps {
+        sh '''curl --fail --silent http://localhost:5041/health
+curl --fail --silent http://localhost:4200/healthz
+curl --fail --silent http://localhost:5055/health
+docker compose -f $COMPOSE_FILE ps'''
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: stb-monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 10m
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [stb-monitoring.local]
+      secretName: stb-ingress-tls
+  rules:
+    - host: stb-monitoring.local
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend: { service: { name: stb-api, port: { number: 8080 } } }
+          - path: /avatars
+            pathType: Prefix
+            backend: { service: { name: stb-api, port: { number: 8080 } } }
+          - path: /attachments
+            pathType: Prefix
+            backend: { service: { name: stb-api, port: { number: 8080 } } }
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: stb-frontend, port: { number: 8080 } } }

@@ -74,16 +74,17 @@ public sealed class AuthService(IIdentityStore store, IPasswordService passwords
     private static string HashToken(string value)=>Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
     private async Task<UserResponse> MapAsync(User u, CancellationToken ct)
     {
-        var resolved = u.Role == StbMonitoring.Domain.Constants.RoleNames.Technician
-            ? await store.CountResolvedIncidentsAsync(u.Id, ct) : 0;
-        return UserMapper.Map(u, resolved);
+        var stats = u.Role == StbMonitoring.Domain.Constants.RoleNames.Technician
+            ? await store.GetTechnicianResolvedIncidentStatsAsync(u.Id, ct) : [];
+        return UserMapper.Map(u, stats);
     }
 }
 
 internal static class UserMapper
 {
-    internal static UserResponse Map(User u, int resolved)
+    internal static UserResponse Map(User u, IReadOnlyCollection<TechnicianResolvedIncidentStat> stats)
     {
+        var resolved=stats.Count;
         var badge = u.Role != StbMonitoring.Domain.Constants.RoleNames.Technician ? "Membre"
             : resolved >= 50 ? "Expert incidents"
             : resolved >= 20 ? "Technicien confirmé"
@@ -92,7 +93,25 @@ internal static class UserMapper
         var avatarUrl = string.IsNullOrWhiteSpace(u.AvatarPath) ? null : "/" + u.AvatarPath.Replace('\\', '/').TrimStart('/');
         return new(u.Id, u.Username, u.Email, u.FirstName, u.LastName, u.Role, u.IsActive,
             u.CreatedAt, u.LastLoginAt, avatarUrl, u.PhoneNumber, u.JobTitle,
-            u.Skills.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), badge, resolved);
+            u.Skills.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), badge, resolved,
+            u.Role==StbMonitoring.Domain.Constants.RoleNames.Technician?BuildPerformance(stats):null);
+    }
+
+    private static TechnicianPerformanceResponse BuildPerformance(IReadOnlyCollection<TechnicianResolvedIncidentStat> stats)
+    {
+        var resolved=stats.Count;var slaMet=stats.Count(x=>x.SlaStatus=="Met");
+        var slaRate=resolved==0?0:Math.Round(100d*slaMet/resolved,1);
+        var specialty=stats.GroupBy(x=>x.Category).OrderByDescending(x=>x.Count()).ThenBy(x=>x.Key).Select(x=>x.Key).FirstOrDefault()??"À développer";
+        specialty=specialty switch{"Database"=>"Bases de données","Certificate"=>"TLS & certificats","Availability"=>"Disponibilité","Performance"=>"Performance","Network"=>"Réseau","Application"=>"Applications","Security"=>"Sécurité",_=>specialty};
+        var mean=resolved==0?0:Math.Round(stats.Average(x=>(x.ResolvedAt!.Value-x.CreatedAt).TotalMinutes),1);
+        var xp=stats.Sum(x=>(x.Priority switch{"P1Critical"=>50,"P2High"=>35,"P3Medium"=>20,_=>10})+(x.SlaStatus=="Met"?10:0));
+        var level=xp/200+1;var levelFloor=(level-1)*200;var next=level*200;var progress=(int)Math.Round(100d*(xp-levelFloor)/200);
+        int Category(params string[] names)=>stats.Count(x=>names.Contains(x.Category));
+        var database=Category("Database");var tls=Category("Certificate");var http=Category("Application","Availability");var p1=stats.Count(x=>x.Priority=="P1Critical");var systems=stats.Where(x=>x.SystemId.HasValue).Select(x=>x.SystemId).Distinct().Count();
+        var reliable=resolved>=15&&stats.Sum(x=>x.ReopenCount)<=Math.Max(1,resolved/10);
+        TechnicianBadgeResponse Badge(string code,string name,string description,string icon,int current,int target,string tier,bool? unlocked=null)=>new(code,name,description,icon,unlocked??current>=target,current,target,tier);
+        var badges=new[]{Badge("DATABASE","Spécialiste Database","Résoudre 5 incidents liés aux bases de données.","DB",database,5,"Argent"),Badge("TLS","Gardien TLS","Résoudre 5 incidents de certificat ou de chaîne TLS.","TLS",tls,5,"Argent"),Badge("HTTP","Expert HTTP/API","Résoudre 5 incidents applicatifs ou de disponibilité.","API",http,5,"Argent"),Badge("SPEED","Maîtrise SLA","Résoudre 10 incidents dans le délai SLA.","⏱",slaMet,10,"Or"),Badge("CRITICAL","Intervention critique","Résoudre 3 incidents critiques P1.","P1",p1,3,"Or"),Badge("RELIABLE","Résolution fiable","15 résolutions avec un taux de réouverture inférieur à 10 %.","✓",resolved,15,"Platine",reliable),Badge("MULTI_SI","Expert multi-SI","Intervenir avec succès sur au moins 3 systèmes.","SI",systems,3,"Or")};
+        return new(resolved,slaRate,specialty,mean,xp,level,next,progress,badges);
     }
 }
 
@@ -142,6 +161,6 @@ public sealed class UserService(IIdentityStore store, IPasswordService passwords
     public async Task SetActiveAsync(Guid id, bool active, Guid actor, string? ip, CancellationToken ct)
     { var user=await Required(id,ct); if(!active&&id==actor)throw new InvalidOperationException("Vous ne pouvez pas désactiver votre propre compte."); if(!active&&user.Role==StbMonitoring.Domain.Constants.RoleNames.Admin&&await store.CountActiveAdminsAsync(ct)<=1)throw new InvalidOperationException("Le dernier administrateur actif ne peut pas être désactivé."); if(active) user.Activate(); else user.Deactivate(); Audit(actor,active?"USER_ACTIVATED":"USER_DEACTIVATED",user,ip); await store.SaveChangesAsync(ct); }
     private async Task<User> Required(Guid id,CancellationToken ct)=>await store.FindUserByIdAsync(id,ct)??throw new KeyNotFoundException("Utilisateur introuvable.");
-    private async Task<UserResponse> MapAsync(User user,CancellationToken ct)=>UserMapper.Map(user,user.Role==StbMonitoring.Domain.Constants.RoleNames.Technician?await store.CountResolvedIncidentsAsync(user.Id,ct):0);
+    private async Task<UserResponse> MapAsync(User user,CancellationToken ct)=>UserMapper.Map(user,user.Role==StbMonitoring.Domain.Constants.RoleNames.Technician?await store.GetTechnicianResolvedIncidentStatsAsync(user.Id,ct):[]);
     private void Audit(Guid actor,string action,User user,string? ip,string? detail=null)=>store.AddAudit(new AuditLog(actor,action,"User",user.Id,detail,ip));
 }

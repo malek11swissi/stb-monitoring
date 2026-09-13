@@ -1,6 +1,7 @@
 /** Client HTTP et modèles frontend du catalogue SI, des endpoints et contrôles. */
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { API_ROOT } from './api-url';
 
 export type MonitoringStatus = 'Unknown'|'Up'|'Degraded'|'Down';
 export interface MonitoredSystem { id:string;code:string;name:string;description:string;environment:string;criticality:string;owner?:string;monitoringEnabled:boolean;isArchived:boolean;status:MonitoringStatus;lastCheckedAt?:string;endpointCount:number;upCount:number;degradedCount:number;downCount:number }
@@ -13,7 +14,7 @@ export interface PagedResult<T>{items:T[];total:number;page:number;pageSize:numb
 export interface SystemRiskPrediction{available:boolean;systemId:string;modelName:string;modelVersion:string;modelSource:string;sampleCount:number;risk15Minutes:number;risk30Minutes:number;risk60Minutes:number;riskScore:number;riskLevel:string;confidence:number;estimatedTimeToDownMinutes?:number;factors:{code:string;label:string;contribution:number}[];mostRiskyEndpoints:{endpointId:string;name:string;riskScore:number;riskLevel:string}[];generatedAt:string;message?:string}
 
 @Injectable({providedIn:'root'}) export class MonitoringService {
-  private readonly api='http://localhost:5041/api/systems';
+  private readonly api=`${API_ROOT}/systems`;
   constructor(private http:HttpClient){}
   systems(includeArchived=false){return this.http.get<MonitoredSystem[]>(`${this.api}?includeArchived=${includeArchived}`)}
   systemsPaged(filters:Record<string,string|number|boolean>){const q=new URLSearchParams();Object.entries(filters).forEach(([k,v])=>{if(v!==''&&v!==undefined)q.set(k,String(v))});return this.http.get<PagedResult<MonitoredSystem>>(`${this.api}/paged?${q}`)}
@@ -31,5 +32,5 @@ export interface SystemRiskPrediction{available:boolean;systemId:string;modelNam
   checks(filters:{systemId?:string;endpointId?:string;status?:string;from?:string;to?:string;take?:number}){const q=new URLSearchParams();Object.entries(filters).forEach(([k,v])=>{if(v!==undefined&&v!=='')q.set(k,String(v))});return this.http.get<CheckResult[]>(`${this.api}/checks?${q}`)}
   checksPaged(filters:Record<string,string|number>){const q=new URLSearchParams();Object.entries(filters).forEach(([k,v])=>{if(v!=='')q.set(k,String(v))});return this.http.get<PagedResult<CheckResult>>(`${this.api}/checks/paged?${q}`)}
   evidence(id:string){return this.http.get(`${this.api}/checks/${id}/evidence`,{responseType:'blob'})}
-  systemRisk(id:string){return this.http.get<SystemRiskPrediction>(`http://localhost:5041/api/ai/systems/${id}/risk`)}
+  systemRisk(id:string){return this.http.get<SystemRiskPrediction>(`${API_ROOT}/ai/systems/${id}/risk`)}
 }
