@@ -8,9 +8,15 @@ pipeline {
   environment {
     COMPOSE_FILE='infrastructure/docker/docker-compose.yml'
     NEXUS_REGISTRY='localhost:8082'
+    STB_TEST_POSTGRES='Host=postgres;Port=5432;Database=stb_monitoring;Username=stb_admin;Password=ChangeMe_Postgres_123!'
   }
   stages {
     stage('Checkout Git') { steps { checkout scm } }
+    stage('Base de tests') {
+      steps {
+        sh 'docker compose -f $COMPOSE_FILE up -d --wait postgres'
+      }
+    }
     stage('Restauration et validation') {
       parallel {
         stage('Backend et simulateurs .NET') {
@@ -20,7 +26,13 @@ pipeline {
           steps { dir('platform/frontend') { sh 'npm ci && npm run build' } }
         }
         stage('Service IA Python') {
-          steps { dir('ai-service') { sh 'python3 -m pip install -r requirements.txt && python3 -m pytest -q' } }
+          steps {
+            dir('ai-service') {
+              sh '''python3 -m venv .venv-ci
+.venv-ci/bin/python -m pip install -r requirements.txt
+.venv-ci/bin/python -m pytest -q'''
+            }
+          }
         }
       }
     }

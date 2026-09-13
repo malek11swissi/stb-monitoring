@@ -5,7 +5,11 @@ using StbMonitoring.Application.Interfaces;
 namespace StbMonitoring.IntegrationTests;
 public sealed class PostgreSqlIntegrationTests
 {
-    private const string ConnectionString="Host=localhost;Port=55432;Database=stb_monitoring;Username=stb_admin;Password=ChangeMe_Postgres_123!";
+    // En local les tests utilisent le port publié 55432. Dans Jenkins, la
+    // variable pointe vers le service PostgreSQL du réseau Docker (postgres:5432).
+    private static string ConnectionString =>
+        Environment.GetEnvironmentVariable("STB_TEST_POSTGRES")
+        ?? "Host=localhost;Port=55432;Database=stb_monitoring;Username=stb_admin;Password=ChangeMe_Postgres_123!";
     [Fact]
     public async Task PostgreSql_persists_and_enforces_unique_username()
     {
