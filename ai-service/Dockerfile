@@ -1,9 +1,18 @@
 FROM python:3.12-slim
 WORKDIR /app
 COPY requirements.txt .
-# Les téléchargements PyPI peuvent être lents dans Docker Desktop/Jenkins.
-# Un timeout et plusieurs tentatives évitent un échec CI sur une coupure brève.
-RUN pip install --no-cache-dir --timeout 120 --retries 8 -r requirements.txt
+# Les wheels NumPy/SciPy sont volumineux. Si une coupure produit un fichier au
+# hash invalide, on ne contourne pas le contrôle : on recommence le téléchargement.
+RUN set -e; \
+    for attempt in 1 2 3; do \
+      pip cache purge >/dev/null 2>&1 || true; \
+      if pip install --no-cache-dir --timeout 180 --retries 8 -r requirements.txt; then \
+        exit 0; \
+      fi; \
+      echo "Téléchargement PyPI incomplet (tentative ${attempt}/3), nouvel essai..."; \
+      sleep 10; \
+    done; \
+    exit 1
 COPY app ./app
 COPY data/resolution_knowledge_base.json ./data/resolution_knowledge_base.json
 COPY models ./models
