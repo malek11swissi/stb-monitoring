@@ -2,16 +2,23 @@
 pipeline {
   agent any
   options { timestamps(); timeout(time: 30, unit: 'MINUTES') }
+  environment {
+    COMPOSE_FILE='infrastructure/docker/docker-compose.yml'
+    STB_TEST_POSTGRES='Host=postgres;Port=5432;Database=stb_monitoring_tests;Username=stb_admin;Password=ChangeMe_Postgres_123!'
+  }
   stages {
     stage('Checkout Git') { steps { checkout scm } }
     stage('Analyse SonarQube') {
       steps {
         withSonarQubeEnv('stb-sonarqube') {
           withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
-            sh '''dotnet tool update --global dotnet-sonarscanner || dotnet tool install --global dotnet-sonarscanner
+            sh '''docker compose -f "$COMPOSE_FILE" up -d --wait postgres
+dotnet tool update --global dotnet-sonarscanner || dotnet tool install --global dotnet-sonarscanner
 export PATH="$PATH:$HOME/.dotnet/tools"
-dotnet sonarscanner begin /k:"STB-Monitoring" /d:sonar.token="$SONAR_TOKEN"
+dotnet restore StbMonitoring.sln
+dotnet sonarscanner begin /k:"STB-Monitoring" /d:sonar.token="$SONAR_TOKEN" /d:sonar.cs.opencover.reportsPaths="**/TestResults/coverage.opencover.xml"
 dotnet build StbMonitoring.sln -c Release
+dotnet test StbMonitoring.sln -c Release --no-build --no-restore /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:CoverletOutput=./TestResults/coverage.opencover.xml
 dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"'''
           }
         }
