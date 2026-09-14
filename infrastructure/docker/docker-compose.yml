@@ -154,6 +154,10 @@ services:
     profiles: ["monitoring"]
     image: prom/prometheus:latest
     container_name: stb-monitoring-prometheus
+    # Les sondes HTTP de prometheus.yml passent toutes par Blackbox Exporter.
+    # Cette dépendance évite un tableau Targets entièrement DOWN si Prometheus
+    # est démarré directement depuis Docker Compose ou Jenkins.
+    depends_on: [blackbox-exporter]
     ports: ["9090:9090"]
     volumes:
       - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
