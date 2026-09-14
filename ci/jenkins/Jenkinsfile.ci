@@ -8,7 +8,8 @@ pipeline {
   environment {
     COMPOSE_FILE='infrastructure/docker/docker-compose.yml'
    
-    STB_TEST_POSTGRES='Host=postgres;Port=5432;Database=stb_monitoring;Username=stb_admin;Password=ChangeMe_Postgres_123!'
+    // Base jetable réservée aux tests : la CI ne modifie jamais la base applicative.
+    STB_TEST_POSTGRES='Host=postgres;Port=5432;Database=stb_monitoring_tests;Username=stb_admin;Password=ChangeMe_Postgres_123!'
   }
   stages {
     stage('Checkout Git') { steps { checkout scm } }
