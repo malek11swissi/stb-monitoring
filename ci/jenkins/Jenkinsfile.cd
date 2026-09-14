@@ -5,7 +5,8 @@ pipeline {
   parameters { string(name: 'IMAGE_TAG', defaultValue: '', description: 'Tag Nexus obligatoire, par exemple 42-a1b2c3d4') }
   environment {
     COMPOSE_FILE='infrastructure/docker/docker-compose.yml'
-    NEXUS_REGISTRY='localhost:8082'
+    // Depuis le conteneur Jenkins, localhost désigne Jenkins lui-même.
+    NEXUS_REGISTRY='host.docker.internal:8082'
   }
   stages {
     stage('Vérifier la version') {

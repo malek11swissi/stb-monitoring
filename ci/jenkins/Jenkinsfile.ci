@@ -7,7 +7,10 @@ pipeline {
   }
   environment {
     COMPOSE_FILE='infrastructure/docker/docker-compose.yml'
-   
+    // Jenkins s'exécute dans un conteneur : cette adresse rejoint le port
+    // 8082 publié par le registre Nexus sur la machine hôte.
+    NEXUS_REGISTRY='host.docker.internal:8082'
+
     // Base jetable réservée aux tests : la CI ne modifie jamais la base applicative.
     STB_TEST_POSTGRES='Host=postgres;Port=5432;Database=stb_monitoring_tests;Username=stb_admin;Password=ChangeMe_Postgres_123!'
   }
