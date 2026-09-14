@@ -10,7 +10,7 @@ pipeline {
           withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
             sh '''dotnet tool update --global dotnet-sonarscanner || dotnet tool install --global dotnet-sonarscanner
 export PATH="$PATH:$HOME/.dotnet/tools"
-dotnet sonarscanner begin /k:"stb-monitoring" /d:sonar.token="$SONAR_TOKEN"
+dotnet sonarscanner begin /k:"STB-Monitoring" /d:sonar.token="$SONAR_TOKEN"
 dotnet build StbMonitoring.sln -c Release
 dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"'''
           }
