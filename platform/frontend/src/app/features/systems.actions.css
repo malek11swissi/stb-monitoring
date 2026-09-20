@@ -1,0 +1,12 @@
+.system-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:16px;padding-top:15px;border-top:1px solid #e4edf0}
+.system-action{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:39px;padding:9px 11px;border:1px solid transparent;border-radius:11px;font-size:12px;font-weight:800;line-height:1;color:#32576b;white-space:nowrap;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
+.system-action svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.system-action:hover{transform:translateY(-2px);box-shadow:0 7px 17px #17394e1b}
+.system-action:focus-visible{outline:3px solid #22b8ae80;outline-offset:2px}
+.system-action.edit-action{background:#eaf7f8;border-color:#bde5e8;color:#075d70}.system-action.edit-action:hover{background:#d9f2f3}
+.system-action.pause-action{background:#fff5e7;border-color:#f3d9ad;color:#9c5b12}.system-action.pause-action:hover{background:#ffebce}
+.system-action.resume-action{background:#e9f8f0;border-color:#bce8d1;color:#08784f}.system-action.resume-action:hover{background:#d7f3e4}
+.system-action.archive-action{background:#f0f2fa;border-color:#d5dbef;color:#516392}.system-action.archive-action:hover{background:#e4e9f7}
+.system-action.delete-action{background:#fff0ee;border-color:#f2c9c3;color:#b42318}.system-action.delete-action:hover{background:#ffe1dd}
+:host-context(.dark) .system-actions{border-color:#2b4051}:host-context(.dark) .system-action.edit-action{background:#17414a;color:#8fe4df;border-color:#22666a}:host-context(.dark) .system-action.pause-action{background:#493521;color:#f7cb8b;border-color:#7b5730}:host-context(.dark) .system-action.resume-action{background:#173d32;color:#8ce4b9;border-color:#27684d}:host-context(.dark) .system-action.archive-action{background:#29344a;color:#b6c4ed;border-color:#455472}:host-context(.dark) .system-action.delete-action{background:#442a2c;color:#f1a8a5;border-color:#724044}
+@media(max-width:400px){.system-actions{grid-template-columns:1fr}}

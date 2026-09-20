@@ -673,6 +673,29 @@ namespace StbMonitoring.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("DatabaseEngine")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("DatabaseHost")
+                        .HasMaxLength(253)
+                        .HasColumnType("character varying(253)");
+
+                    b.Property<int?>("DatabasePort")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DatabaseName")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("DatabaseGroup")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("DeclaredRole")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<string>("CheckType")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -742,6 +765,8 @@ namespace StbMonitoring.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("SystemId");
+
+                    b.HasIndex("SystemId", "DatabaseGroup");
 
                     b.ToTable("monitoring_endpoints", (string)null);
                 });

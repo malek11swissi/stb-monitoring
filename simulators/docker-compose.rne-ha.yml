@@ -1,0 +1,82 @@
+# Laboratoire RNE HA isolé : ne modifie pas le volume du RNE existant.
+# Trois membres de vote, mais seulement DEUX copies de données : primary,
+# secondary et arbiter (qui ne stocke aucune donnée métier).
+name: stb-rne-ha
+
+services:
+  mongo-keygen:
+    image: mongo:8.0
+    user: root
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - >-
+        if [ ! -s /keyfile/key ]; then head -c 756 /dev/urandom | base64 > /keyfile/key; fi;
+        chown 999:999 /keyfile/key;
+        chmod 400 /keyfile/key
+    volumes: ["rne_ha_keyfile:/keyfile"]
+    restart: "no"
+
+  rne-mongo-1:
+    image: mongo:8.0
+    depends_on:
+      mongo-keygen: { condition: service_completed_successfully }
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/keyfile/key"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: rne_user
+      MONGO_INITDB_ROOT_PASSWORD: ${RNE_MONGO_PASSWORD:-rne_password}
+    ports: ["27018:27017"]
+    volumes:
+      - rne_ha_primary:/data/db
+      - rne_ha_keyfile:/keyfile:ro
+    restart: unless-stopped
+
+  rne-mongo-2:
+    image: mongo:8.0
+    depends_on:
+      mongo-keygen: { condition: service_completed_successfully }
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/keyfile/key"]
+    ports: ["27019:27017"]
+    volumes:
+      - rne_ha_secondary:/data/db
+      - rne_ha_keyfile:/keyfile:ro
+    restart: unless-stopped
+
+  rne-mongo-arbiter:
+    image: mongo:8.0
+    depends_on:
+      mongo-keygen: { condition: service_completed_successfully }
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/keyfile/key"]
+    volumes:
+      - rne_ha_arbiter:/data/db
+      - rne_ha_keyfile:/keyfile:ro
+    restart: unless-stopped
+
+  mongo-init:
+    image: mongo:8.0
+    depends_on:
+      rne-mongo-1: { condition: service_started }
+      rne-mongo-2: { condition: service_started }
+      rne-mongo-arbiter: { condition: service_started }
+    environment:
+      RNE_MONGO_PASSWORD: ${RNE_MONGO_PASSWORD:-rne_password}
+    entrypoint: ["/bin/sh", "/scripts/rne-ha-init.sh"]
+    volumes: ["./rne-ha-init.sh:/scripts/rne-ha-init.sh:ro"]
+    restart: "no"
+
+  rne-simulator:
+    build: { context: ./RneSimulator }
+    depends_on:
+      mongo-init: { condition: service_completed_successfully }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      MongoDb__ConnectionString: "mongodb://rne_user:${RNE_MONGO_PASSWORD:-rne_password}@rne-mongo-1:27017,rne-mongo-2:27017/?authSource=admin&replicaSet=rs0&retryReads=true&retryWrites=true"
+      Lab__AdminKey: change-this-lab-key
+      Kestrel__Endpoints__Http__Url: "http://+:8080"
+    ports: ["5202:8080"]
+    restart: unless-stopped
+
+volumes:
+  rne_ha_keyfile:
+  rne_ha_primary:
+  rne_ha_secondary:
+  rne_ha_arbiter:

@@ -12,6 +12,19 @@ public sealed class DatabaseSeeder(MonitoringDbContext db, IPasswordService pass
     {
         await db.Database.EnsureCreatedAsync(ct);
 
+        // Les installations existantes utilisent EnsureCreated (sans historique EF).
+        // Ajouter uniquement les colonnes manquantes, sans recréer ni effacer la base.
+        await db.Database.ExecuteSqlRawAsync("""
+            ALTER TABLE monitoring_endpoints ADD COLUMN IF NOT EXISTS "DatabaseEngine" character varying(20);
+            ALTER TABLE monitoring_endpoints ADD COLUMN IF NOT EXISTS "DatabaseHost" character varying(253);
+            ALTER TABLE monitoring_endpoints ADD COLUMN IF NOT EXISTS "DatabasePort" integer;
+            ALTER TABLE monitoring_endpoints ADD COLUMN IF NOT EXISTS "DatabaseName" character varying(120);
+            ALTER TABLE monitoring_endpoints ADD COLUMN IF NOT EXISTS "DatabaseGroup" character varying(100);
+            ALTER TABLE monitoring_endpoints ADD COLUMN IF NOT EXISTS "DeclaredRole" character varying(20);
+            CREATE INDEX IF NOT EXISTS "IX_monitoring_endpoints_SystemId_DatabaseGroup"
+                ON monitoring_endpoints ("SystemId", "DatabaseGroup");
+            """, ct);
+
         if (!await db.Users.AnyAsync(ct))
         {
             var user = new User("admin", "admin@stb.local", passwords.Hash("ChangeMe123!"), "Admin", "STB", RoleNames.Admin);

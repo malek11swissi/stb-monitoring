@@ -14,7 +14,9 @@ public sealed class CompanyRepository
     {
         var settings = options.Value;
         var clientSettings = MongoClientSettings.FromConnectionString(settings.ConnectionString);
-        clientSettings.ServerSelectionTimeout = TimeSpan.FromSeconds(3);
+        // Une élection MongoDB provoque une courte interruption : laisser au
+        // driver le temps de découvrir le nouveau PRIMARY avant de rendre 503.
+        clientSettings.ServerSelectionTimeout = TimeSpan.FromSeconds(15);
         clientSettings.ConnectTimeout = TimeSpan.FromSeconds(3);
         var client = new MongoClient(clientSettings);
         database = client.GetDatabase(settings.DatabaseName);

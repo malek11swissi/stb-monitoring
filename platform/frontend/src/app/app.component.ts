@@ -16,12 +16,14 @@ import { API_ORIGIN } from './core/api-url';
 export class AppComponent implements OnInit {
   title='StbFrontend';
   sidebarOpen=false;
+  sidebarCollapsed=localStorage.getItem('stb_sidebar_collapsed')==='true';
   unreadCount=0;
   darkMode=localStorage.getItem('stb_theme')==='dark';
   constructor(public auth:AuthService,private router:Router,private operations:OperationsService){}
   ngOnInit(){if(this.auth.token())this.operations.notifications().subscribe({next:x=>this.unreadCount=x.filter(n=>!n.isRead).length,error:()=>{}})}
   logout(){this.auth.logout();this.router.navigate(['/login']);}
   closeSidebar(){this.sidebarOpen=false;}
+  toggleSidebar(){this.sidebarCollapsed=!this.sidebarCollapsed;localStorage.setItem('stb_sidebar_collapsed',String(this.sidebarCollapsed));}
   avatar(user:{avatarUrl?:string}){return user.avatarUrl?`${API_ORIGIN}${user.avatarUrl}`:'/default-avatar.svg';}
   roleLabel(role:string){return({ADMIN:'Administrateur',SUPERVISOR:'Superviseur',TECHNICIAN:'Technicien',MANAGER_IT:'Manager IT'}as Record<string,string>)[role]||role;}
   toggleTheme(){this.darkMode=!this.darkMode;localStorage.setItem('stb_theme',this.darkMode?'dark':'light')}

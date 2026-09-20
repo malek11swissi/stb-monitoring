@@ -1,22 +1,22 @@
-<div class="app-shell" [class.dark]="darkMode" *ngIf="auth.currentUser() as user; else publicPage">
+<div class="app-shell" [class.dark]="darkMode" [class.sidebar-collapsed]="sidebarCollapsed" *ngIf="auth.currentUser() as user; else publicPage">
   <aside class="sidebar" [class.open]="sidebarOpen">
-    <div class="logo"><span class="logo-mark">S</span><div><strong>STB Sentinel</strong><small>Monitoring Console</small></div><button class="mobile-close" (click)="closeSidebar()">×</button></div>
+    <div class="logo"><span class="logo-mark">S</span><div class="brand-copy"><strong>STB Monitoring</strong><small>Command center</small></div><button class="sidebar-collapse" type="button" (click)="toggleSidebar()" [attr.aria-label]="sidebarCollapsed?'Déployer la navigation':'Réduire la navigation'" [title]="sidebarCollapsed?'Déployer':'Réduire'">{{sidebarCollapsed?'›':'‹'}}</button><button class="mobile-close" type="button" (click)="closeSidebar()">×</button></div>
     <nav>
       <span class="nav-label">SUPERVISION</span>
-      <a routerLink="/dashboard" routerLinkActive="active" (click)="closeSidebar()"><span>⌂</span>Vue d’ensemble</a>
-      <a routerLink="/systems" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('systems.read')"><span>◉</span>Systèmes supervisés</a>
-      <a routerLink="/alerts" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('alerts.read')"><span>⚠</span>Alertes</a>
-      <a routerLink="/alert-rules" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('alert_rules.manage')"><span>⚙</span>Règles d’alerte</a>
-      <a routerLink="/incidents" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('incidents.read')"><span>◆</span>Incidents</a>
-      <a routerLink="/calendar" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('maintenance.read')"><span>▣</span>Calendrier</a>
+      <a routerLink="/dashboard" routerLinkActive="active" (click)="closeSidebar()" title="Vue d’ensemble"><span class="nav-icon">⌂</span><b>Vue d’ensemble</b></a>
+      <a routerLink="/systems" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('systems.read')" title="Systèmes supervisés"><span class="nav-icon">◉</span><b>Systèmes supervisés</b></a>
+      <a routerLink="/alerts" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('alerts.read')" title="Alertes"><span class="nav-icon">⚠</span><b>Alertes</b></a>
+      <a routerLink="/alert-rules" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('alert_rules.manage')" title="Règles d’alerte"><span class="nav-icon">⚙</span><b>Règles d’alerte</b></a>
+      <a routerLink="/incidents" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('incidents.read')" title="Incidents"><span class="nav-icon">◆</span><b>Incidents</b></a>
+      <a routerLink="/calendar" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('maintenance.read')" title="Calendrier"><span class="nav-icon">▣</span><b>Calendrier</b></a>
       <span class="nav-label" *ngIf="auth.hasPermission('users.read') || auth.hasPermission('sla.manage')">GESTION</span>
-      <a routerLink="/users" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('users.read')"><span>♙</span>Utilisateurs</a>
-      <a routerLink="/audit" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('audit.read')"><span>≣</span>Journal d’audit</a>
-      <a routerLink="/sla" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('sla.manage')"><span>◷</span>Politiques SLA</a>
+      <a routerLink="/users" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('users.read')" title="Utilisateurs"><span class="nav-icon">♙</span><b>Utilisateurs</b></a>
+      <a routerLink="/audit" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('audit.read')" title="Journal d’audit"><span class="nav-icon">≣</span><b>Journal d’audit</b></a>
+      <a routerLink="/sla" routerLinkActive="active" (click)="closeSidebar()" *ngIf="auth.hasPermission('sla.manage')" title="Politiques SLA"><span class="nav-icon">◷</span><b>Politiques SLA</b></a>
     </nav>
-    <div class="sidebar-user"><img class="avatar" [src]="avatar(user)" alt="Photo de {{user.firstName}}"><div><strong>{{user.firstName}} {{user.lastName}}</strong><small>{{user.badge || user.role}}</small></div><button [title]="darkMode?'Mode clair':'Mode sombre'" (click)="toggleTheme()">{{darkMode?'☀':'◐'}}</button></div>
+    <div class="sidebar-user"><img class="avatar" [src]="avatar(user)" alt="Photo de {{user.firstName}}"><div class="user-copy"><strong>{{user.firstName}} {{user.lastName}}</strong><small>{{user.badge || roleLabel(user.role)}}</small></div><button class="theme-toggle" [title]="darkMode?'Mode clair':'Mode sombre'" (click)="toggleTheme()">{{darkMode?'☀':'◐'}}</button></div>
   </aside>
   <div class="mobile-overlay" [class.visible]="sidebarOpen" (click)="closeSidebar()"></div>
-  <main class="workspace"><header class="topbar"><button class="menu-toggle" (click)="sidebarOpen=true">☰</button><div class="topbar-title"><b>Console de supervision</b><small>{{roleLabel(user.role)}}</small></div><nav class="top-actions"><a routerLink="/notifications" title="Notifications"><span>♢</span><i *ngIf="unreadCount">{{unreadCount>99?'99+':unreadCount}}</i></a><a routerLink="/profile" class="profile-link" title="Mon profil"><img [src]="avatar(user)" alt=""><span><b>{{user.firstName}} {{user.lastName}}</b><small>Mon profil</small></span></a><button title="Se déconnecter" (click)="logout()"><span>↪</span><small>Déconnexion</small></button></nav></header><router-outlet /></main>
+  <main class="workspace"><header class="topbar"><button class="menu-toggle" (click)="sidebarOpen=true" aria-label="Ouvrir le menu">☰</button><div class="topbar-title"><span class="live-dot"></span><div><b>Console de supervision</b><small>{{roleLabel(user.role)}} · environnement opérationnel</small></div></div><nav class="top-actions"><a routerLink="/notifications" class="notification-action" [class.has-unread]="unreadCount>0" [attr.aria-label]="unreadCount+' notifications non lues'" title="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><i *ngIf="unreadCount">{{unreadCount>99?'99+':unreadCount}}</i></a><a routerLink="/profile" class="profile-link" title="Mon profil"><img [src]="avatar(user)" alt=""><span><b>{{user.firstName}} {{user.lastName}}</b><small>{{roleLabel(user.role)}}</small></span><em>⌄</em></a><button class="logout-action" title="Se déconnecter" (click)="logout()"><span>↪</span><small>Déconnexion</small></button></nav></header><router-outlet /></main>
 </div>
 <ng-template #publicPage><main><router-outlet /></main></ng-template>

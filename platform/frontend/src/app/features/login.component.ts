@@ -76,11 +76,21 @@ import { AuthService } from '../core/auth.service';
   `]
 })
 export class LoginComponent {
-  login=''; password='';twoFactorCode='';challengeToken='';twoFactorRequired=false; error=''; loading=false; showPassword=false;
+  login=''; 
+  password='';
+  twoFactorCode='';
+  challengeToken='';
+  twoFactorRequired=false; 
+  error=''; 
+  loading=false;
+   showPassword=false;
+
   constructor(private auth:AuthService,private router:Router,private route:ActivatedRoute){}
+
   submit(){
     if(this.loading)return;
-    this.loading=true;this.error='';
+    this.loading=true;
+    this.error='';
     const request=this.twoFactorRequired?this.auth.verifyTwoFactor(this.challengeToken,this.twoFactorCode):this.auth.login(this.login.trim(),this.password);
     request.subscribe({
       next:result=>{if(result.requiresTwoFactor&&result.challengeToken){this.challengeToken=result.challengeToken;this.twoFactorRequired=true;this.password='';this.loading=false;return}this.router.navigateByUrl(this.safeReturnUrl())},

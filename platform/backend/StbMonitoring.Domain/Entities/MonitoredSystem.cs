@@ -10,7 +10,21 @@ public sealed class MonitoredSystem
     public MonitoringStatus Status{get;private set;}=MonitoringStatus.Unknown; public DateTime CreatedAt{get;private set;}=DateTime.UtcNow; public DateTime UpdatedAt{get;private set;}=DateTime.UtcNow; public DateTime? ArchivedAt{get;private set;} public DateTime? LastCheckedAt{get;private set;}
     public ICollection<MonitoringEndpoint> Endpoints{get;}=new List<MonitoringEndpoint>();
     public void Update(string code,string name,string description,SystemEnvironment environment,SystemCriticality criticality,string? owner){Code=code.Trim().ToUpperInvariant();Name=name.Trim();Description=description.Trim();Environment=environment;Criticality=criticality;Owner=owner?.Trim();UpdatedAt=DateTime.UtcNow;}
-    public void SetMonitoring(bool enabled){MonitoringEnabled=enabled;UpdatedAt=DateTime.UtcNow;if(!enabled)Status=MonitoringStatus.Unknown;}
+    public void SetMonitoring(bool enabled){MonitoringEnabled=enabled;UpdatedAt=DateTime.UtcNow;if(enabled)RecalculateStatus();else Status=MonitoringStatus.Unknown;}
     public void Archive(){IsArchived=true;ArchivedAt=DateTime.UtcNow;MonitoringEnabled=false;Status=MonitoringStatus.Unknown;UpdatedAt=DateTime.UtcNow;} public void Restore(){IsArchived=false;ArchivedAt=null;UpdatedAt=DateTime.UtcNow;}
-    public void RecalculateStatus(){var active=Endpoints.Where(x=>x.IsActive).ToArray();LastCheckedAt=active.Length==0?null:active.Select(x=>x.LastCheckedAt).Max();if(active.Length==0||active.All(x=>!x.LastCheckedAt.HasValue)){Status=MonitoringStatus.Unknown;UpdatedAt=DateTime.UtcNow;return;}if(active.Any(x=>x.IsCritical&&x.Status==MonitoringStatus.Down)){Status=MonitoringStatus.Down;UpdatedAt=DateTime.UtcNow;return;}if(active.Any(x=>x.Status is MonitoringStatus.Down or MonitoringStatus.Degraded)){Status=MonitoringStatus.Degraded;UpdatedAt=DateTime.UtcNow;return;}Status=active.All(x=>x.Status==MonitoringStatus.Up)?MonitoringStatus.Up:MonitoringStatus.Unknown;UpdatedAt=DateTime.UtcNow;}
+    public void RecalculateStatus()
+    {
+        var active=Endpoints.Where(x=>x.IsActive).ToArray();
+        LastCheckedAt=active.Length==0?null:active.Select(x=>x.LastCheckedAt).Max();
+        if(active.Length==0||active.All(x=>!x.LastCheckedAt.HasValue)){Status=MonitoringStatus.Unknown;UpdatedAt=DateTime.UtcNow;return;}
+        var ordinary=active.Where(x=>x.CheckType!=CheckType.Database).ToArray();
+        var groups=active.Where(x=>x.CheckType==CheckType.Database).GroupBy(x=>x.DatabaseGroup).ToArray();
+        // Une instance principale tombée ne rend pas le SI DOWN si son secours
+        // répond. On conserve DEGRADED pour signaler la perte de redondance.
+        var criticalDatabaseDown=groups.Any(g=>g.Any(x=>x.IsCritical)&&g.All(x=>x.LastCheckedAt.HasValue&&x.Status==MonitoringStatus.Down));
+        if(ordinary.Any(x=>x.IsCritical&&x.Status==MonitoringStatus.Down)||criticalDatabaseDown){Status=MonitoringStatus.Down;UpdatedAt=DateTime.UtcNow;return;}
+        if(active.Any(x=>x.Status is MonitoringStatus.Down or MonitoringStatus.Degraded)){Status=MonitoringStatus.Degraded;UpdatedAt=DateTime.UtcNow;return;}
+        Status=active.All(x=>x.Status==MonitoringStatus.Up)?MonitoringStatus.Up:MonitoringStatus.Unknown;
+        UpdatedAt=DateTime.UtcNow;
+    }
 }

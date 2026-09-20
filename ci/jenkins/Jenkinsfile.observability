@@ -4,10 +4,12 @@ pipeline {
   options { timestamps(); timeout(time: 10, unit: 'MINUTES') }
   stages {
     stage('Services applicatifs') {
-      steps { sh 'curl --fail http://localhost:5041/health && curl --fail http://localhost:5055/health && curl --fail http://localhost:4200/healthz' }
+      // Jenkins partage le réseau Compose avec ces services. Il faut employer
+      // leurs noms DNS internes et non localhost, qui désignerait Jenkins.
+      steps { sh 'curl --fail http://api:8080/health && curl --fail http://ai-service:5055/health && curl --fail http://frontend:8080/healthz' }
     }
     stage('Observabilité') {
-      steps { sh 'curl --fail http://localhost:9090/-/ready && curl --fail http://localhost:3000/api/health' }
+      steps { sh 'curl --fail http://prometheus:9090/-/ready && curl --fail http://grafana:3000/api/health' }
     }
   }
 }

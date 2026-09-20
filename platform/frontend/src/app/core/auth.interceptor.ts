@@ -12,7 +12,8 @@ export const authInterceptor:HttpInterceptorFn=(req,next)=>{
   const token=isPublic?null:localStorage.getItem('stb_token');
   const request=token?req.clone({setHeaders:{Authorization:`Bearer ${token}`}}):req;
   return next(request).pipe(catchError((error:HttpErrorResponse)=>{
-    if(error.status===401&&!isPublic){auth.logout();router.navigate(['/login'],{queryParams:{session:'expired'}});}
+    if(error.status===401&&!isPublic){auth.logout();
+      router.navigate(['/login'],{queryParams:{session:'expired'}});}
     return throwError(()=>error);
   }));
 };
