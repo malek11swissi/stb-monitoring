@@ -1,0 +1,75 @@
+# Laboratoire Oracle HA : bascule applicative et réplication GoldenGate Free.
+# La réplication Primary -> Secondary doit être configurée une seule fois
+# dans l'interface GoldenGate après le premier démarrage.
+name: stb-core-banking-ha
+
+services:
+  core-oracle-primary:
+    image: gvenzl/oracle-free:23-slim-faststart
+    environment:
+      ORACLE_PASSWORD: oracle_admin_password
+      APP_USER: core_user
+      APP_USER_PASSWORD: core_password
+    ports: ["1531:1521"]
+    volumes: ["core_oracle_ha_primary:/opt/oracle/oradata"]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 30
+    restart: unless-stopped
+
+  core-oracle-secondary:
+    image: gvenzl/oracle-free:23-slim-faststart
+    environment:
+      ORACLE_PASSWORD: oracle_admin_password
+      APP_USER: core_user
+      APP_USER_PASSWORD: core_password
+    ports: ["1532:1521"]
+    volumes: ["core_oracle_ha_secondary:/opt/oracle/oradata"]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 30
+    restart: unless-stopped
+
+  # GoldenGate observe les modifications de la base principale et les applique
+  # à la base secondaire. Son mot de passe administrateur est généré au
+  # premier démarrage et peut être lu dans les logs du conteneur.
+  core-goldengate:
+    image: container-registry.oracle.com/goldengate/goldengate-oracle-free:23.26.3.0.6
+    depends_on:
+      core-oracle-primary: { condition: service_healthy }
+      core-oracle-secondary: { condition: service_healthy }
+    environment:
+      OGG_ADMIN: oggadmin
+      OGG_DEPLOYMENT: CoreBankingLab
+      OGG_DOMAIN: localhost
+    ports:
+      - "9400:8080"
+      - "9443:8443"
+    volumes:
+      - core_goldengate_data:/u02
+      - core_goldengate_temp:/u03
+    restart: unless-stopped
+
+  core-banking-simulator-ha:
+    build: { context: ./CoreBankingSimulator }
+    depends_on:
+      core-oracle-primary: { condition: service_healthy }
+      core-oracle-secondary: { condition: service_healthy }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__OraclePrimary: "User Id=core_user;Password=core_password;Data Source=core-oracle-primary:1521/FREEPDB1;Connection Timeout=3"
+      ConnectionStrings__OracleSecondary: "User Id=core_user;Password=core_password;Data Source=core-oracle-secondary:1521/FREEPDB1;Connection Timeout=3"
+      Lab__AdminKey: change-this-lab-key
+      Kestrel__Endpoints__Http__Url: "http://+:8080"
+    ports: ["5301:8080"]
+    restart: unless-stopped
+
+volumes:
+  core_oracle_ha_primary:
+  core_oracle_ha_secondary:
+  core_goldengate_data:
+  core_goldengate_temp:
