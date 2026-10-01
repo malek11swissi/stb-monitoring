@@ -1,55 +1,60 @@
-/* Job manuel stb-monitoring-cd : déploie uniquement une version déjà publiée dans Nexus. */
+/* CD GitOps : inscrit dans Git la version Nexus à désirer dans Kubernetes. */
 pipeline {
   agent any
-  options { timestamps(); disableConcurrentBuilds(); timeout(time: 30, unit: 'MINUTES') }
-  parameters { string(name: 'IMAGE_TAG', defaultValue: '', description: 'Tag Nexus obligatoire, par exemple 42-a1b2c3d4') }
-  environment {
-    COMPOSE_FILE='infrastructure/docker/docker-compose.yml'
-    // Depuis le conteneur Jenkins, localhost désigne Jenkins lui-même.
-    NEXUS_REGISTRY='host.docker.internal:8082'
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+    timeout(time: 15, unit: 'MINUTES')
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+  }
+  parameters {
+    string(name: 'IMAGE_TAG', defaultValue: '', description: 'Tag Nexus obligatoire, par exemple 42-a1b2c3d4')
+    choice(name: 'ENVIRONMENT', choices: ['dev', 'prod'], description: 'Overlay Kubernetes à promouvoir')
+    booleanParam(name: 'PUSH_GITOPS', defaultValue: true, description: 'Créer et pousser le commit GitOps')
   }
   stages {
-    stage('Vérifier la version') {
-      steps { script { if (!params.IMAGE_TAG?.trim()) { error('IMAGE_TAG est obligatoire pour le CD.') } } }
+    stage('Checkout') {
+      steps { checkout scm }
     }
-    stage('Checkout configuration') { steps { checkout scm } }
-    stage('Récupérer les images Nexus') {
+    stage('Valider la promotion') {
       steps {
-        withCredentials([usernamePassword(credentialsId: 'nexus-credentials', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD')]) {
-          sh '''echo "$NEXUS_PASSWORD" | docker login "$NEXUS_REGISTRY" -u "$NEXUS_USER" --password-stdin
-IMAGE_TAG=$IMAGE_TAG NEXUS_REGISTRY=$NEXUS_REGISTRY docker compose -f $COMPOSE_FILE pull
-docker logout "$NEXUS_REGISTRY"'''
+        script {
+          if (!(params.IMAGE_TAG ==~ /[A-Za-z0-9][A-Za-z0-9._-]{0,127}/)) {
+            error('IMAGE_TAG est vide ou invalide.')
+          }
+          env.OVERLAY_FILE = "infrastructure/k8s/overlays/${params.ENVIRONMENT}/kustomization.yaml"
+          if (!fileExists(env.OVERLAY_FILE)) {
+            error("Overlay Kubernetes introuvable : ${env.OVERLAY_FILE}")
+          }
+          currentBuild.description = "${params.IMAGE_TAG} → ${params.ENVIRONMENT}"
         }
       }
     }
-    stage('Appliquer les migrations') {
+    stage('Mettre à jour GitOps') {
       steps {
-        withCredentials([usernamePassword(credentialsId: 'postgres-credentials', usernameVariable: 'POSTGRES_USER', passwordVariable: 'POSTGRES_PASSWORD')]) {
-          sh '''POSTGRES_PASSWORD=$POSTGRES_PASSWORD docker compose -f $COMPOSE_FILE up -d --wait postgres
-dotnet tool update --global dotnet-ef || dotnet tool install --global dotnet-ef
-export PATH="$PATH:$HOME/.dotnet/tools"
-export ConnectionStrings__PostgreSql="Host=127.0.0.1;Port=55432;Database=stb_monitoring;Username=$POSTGRES_USER;Password=$POSTGRES_PASSWORD"
-dotnet ef database update --project platform/backend/StbMonitoring.Infrastructure/StbMonitoring.Infrastructure.csproj --startup-project platform/backend/StbMonitoring.Api/StbMonitoring.Api.csproj'''
+        script {
+          def manifest = readFile(env.OVERLAY_FILE)
+          manifest = manifest.replaceAll(/newTag: [^\r\n]+/, "newTag: ${params.IMAGE_TAG}")
+          writeFile file: env.OVERLAY_FILE, text: manifest
         }
+        sh 'kubectl kustomize "infrastructure/k8s/overlays/$ENVIRONMENT" > /tmp/stb-rendered.yaml'
+        archiveArtifacts artifacts: 'infrastructure/k8s/overlays/**/kustomization.yaml', fingerprint: true
       }
     }
-    stage('Déployer Docker Compose') {
+    stage('Commit GitOps') {
+      when { expression { params.PUSH_GITOPS } }
       steps {
-        withCredentials([
-          usernamePassword(credentialsId: 'postgres-credentials', usernameVariable: 'POSTGRES_USER', passwordVariable: 'POSTGRES_PASSWORD'),
-          usernamePassword(credentialsId: 'gmail-smtp-credentials', usernameVariable: 'EMAIL_USERNAME', passwordVariable: 'EMAIL_PASSWORD'),
-          string(credentialsId: 'jwt-secret', variable: 'JWT_KEY')
-        ]) {
-          sh '''IMAGE_TAG=$IMAGE_TAG NEXUS_REGISTRY=$NEXUS_REGISTRY POSTGRES_PASSWORD=$POSTGRES_PASSWORD JWT_KEY=$JWT_KEY EMAIL_MODE=Smtp EMAIL_USERNAME=$EMAIL_USERNAME EMAIL_PASSWORD=$EMAIL_PASSWORD EMAIL_SENDER=$EMAIL_USERNAME docker compose -f $COMPOSE_FILE up -d --no-build --wait'''
+        withCredentials([gitUsernamePassword(credentialsId: 'git-credentials', gitToolName: 'Default')]) {
+          sh '''git config user.name "STB Jenkins"
+git config user.email "stb-jenkins@local"
+git add "$OVERLAY_FILE"
+if git diff --cached --quiet; then
+  echo "La version demandée est déjà enregistrée dans Git."
+else
+  git commit -m "[gitops] Deploy $IMAGE_TAG to $ENVIRONMENT"
+  git push origin HEAD:main
+fi'''
         }
-      }
-    }
-    stage('Readiness et smoke tests') {
-      steps {
-        sh '''curl --fail --silent http://localhost:5041/health
-curl --fail --silent http://localhost:4200/healthz
-curl --fail --silent http://localhost:5055/health
-docker compose -f $COMPOSE_FILE ps'''
       }
     }
   }

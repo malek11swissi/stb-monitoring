@@ -37,8 +37,14 @@ public sealed class MonitoringService(IMonitoringStore store,IEnumerable<ICheckE
    string.Equals(e.DatabaseGroup,request.DatabaseGroup?.Trim(),StringComparison.OrdinalIgnoreCase)&&e.DatabaseEngine==request.DatabaseEngine).ToArray();
   if(peers.Any(e=>string.Equals(e.DatabaseHost,request.DatabaseHost?.Trim(),StringComparison.OrdinalIgnoreCase)&&e.DatabasePort==request.DatabasePort))
    throw new ArgumentException("Cette adresse et ce port sont déjà surveillés dans ce groupe.");
-  if(peers.Any(e=>e.DeclaredRole==request.DeclaredRole))
-   throw new ArgumentException("Ce groupe possède déjà une instance avec ce rôle déclaré (un primaire et un secours maximum).");
+  // Un cluster MySQL InnoDB possède un Primary et plusieurs Secondary.
+  // Les autres laboratoires de ce projet restent modélisés comme une paire.
+  var duplicateRole=peers.Any(e=>e.DeclaredRole==request.DeclaredRole);
+  var mysqlSecondary=request.DatabaseEngine==DatabaseEngine.MySql&&request.DeclaredRole==DatabaseRole.Secondary;
+  if(duplicateRole&&!mysqlSecondary)
+   throw new ArgumentException(request.DatabaseEngine==DatabaseEngine.MySql
+    ?"Ce cluster MySQL possède déjà un Primary déclaré."
+    :"Ce groupe possède déjà une instance avec ce rôle déclaré (un primaire et un secours maximum).");
  }
  private static MonitoringEndpoint New(Guid id,UpsertEndpointRequest r)=>new(id,r.Name,r.Url,r.CheckType,r.HttpMethod,r.ExpectedStatusCode,r.TimeoutSeconds,r.IntervalSeconds,r.DegradedThresholdMs,r.DownThresholdMs,r.IsCritical,r.ExpectedJsonProperty,r.ExpectedJsonValue,r.DatabaseEngine,r.DatabaseHost,r.DatabasePort,r.DatabaseName,r.DatabaseGroup,r.DeclaredRole);
  private static SystemResponse Map(MonitoredSystem s)=>new(s.Id,s.Code,s.Name,s.Description,s.Environment,s.Criticality,s.Owner,s.MonitoringEnabled,s.IsArchived,s.Status,s.LastCheckedAt,s.Endpoints.Count,s.Endpoints.Count(x=>x.Status==MonitoringStatus.Up),s.Endpoints.Count(x=>x.Status==MonitoringStatus.Degraded),s.Endpoints.Count(x=>x.Status==MonitoringStatus.Down));private static EndpointResponse Map(MonitoringEndpoint e)=>new(e.Id,e.SystemId,e.Name,e.Url,e.CheckType,e.HttpMethod,e.ExpectedStatusCode,e.TimeoutSeconds,e.IntervalSeconds,e.DegradedThresholdMs,e.DownThresholdMs,e.IsCritical,e.IsActive,e.ExpectedJsonProperty,e.ExpectedJsonValue,e.Status,e.LastCheckedAt,e.NextCheckAt,e.LastDurationMs,e.LastError,e.DatabaseEngine,e.DatabaseHost,e.DatabasePort,e.DatabaseName,e.DatabaseGroup,e.DeclaredRole);private static CheckResultResponse Map(CheckResult r)=>Map(r,r.Endpoint?.Name??string.Empty);private static CheckResultResponse Map(CheckResult r,string name)=>new(r.Id,r.SystemId,r.EndpointId,name,r.Status,r.Success,r.StartedAt,r.CompletedAt,r.DurationMs,r.HttpStatusCode,r.ErrorType,r.ErrorMessage,r.TriggeredManually,r.TriggeredByUserId,r.Metadata);

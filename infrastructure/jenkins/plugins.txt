@@ -1,6 +1,7 @@
 # Pipeline et affichage des stages
 workflow-aggregator
 pipeline-stage-view
+pipeline-build-step
 
 # GitHub et credentials
 git

@@ -1,6 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: stb-dev
+namespace: stb-prod
 resources: [../../base, namespace.yaml]
 images:
   - name: registry.local/stb-monitoring/api
@@ -13,8 +13,13 @@ images:
     newName: host.docker.internal:8082/stb-monitoring-ai
     newTag: bootstrap
 patches:
-  - target: { kind: Deployment }
+  - target: { kind: Deployment, name: stb-api }
     patch: |-
       - op: replace
         path: /spec/replicas
-        value: 1
+        value: 2
+  - target: { kind: Deployment, name: stb-frontend }
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2

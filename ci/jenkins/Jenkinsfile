@@ -1,0 +1,68 @@
+/*
+ * Pipeline principal STB Monitoring.
+ * Il calcule une version unique puis orchestre les jobs spécialisés.
+ */
+pipeline {
+  agent any
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+    timeout(time: 90, unit: 'MINUTES')
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+  }
+  parameters {
+    choice(name: 'TARGET_ENV', choices: ['none', 'dev', 'prod'], description: 'Environnement à promouvoir après la CI')
+    booleanParam(name: 'PUBLISH_IMAGES', defaultValue: true, description: 'Publier les images validées dans Nexus')
+    booleanParam(name: 'RUN_OBSERVABILITY', defaultValue: false, description: 'Contrôler les services après la synchronisation Argo CD')
+  }
+  stages {
+    stage('Préparer la livraison') {
+      steps {
+        checkout scm
+        script {
+          env.RELEASE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT.take(8)}"
+          currentBuild.displayName = "#${env.BUILD_NUMBER} ${env.RELEASE_TAG}"
+          currentBuild.description = params.TARGET_ENV == 'none' ? 'CI uniquement' : "Promotion vers ${params.TARGET_ENV}"
+        }
+        echo "Version de livraison : ${env.RELEASE_TAG}"
+      }
+    }
+    stage('Intégration continue') {
+      steps {
+        build job: 'stb-monitoring-ci', wait: true, propagate: true,
+          parameters: [
+            string(name: 'RELEASE_TAG', value: env.RELEASE_TAG),
+            booleanParam(name: 'PUBLISH_IMAGES', value: params.PUBLISH_IMAGES)
+          ]
+      }
+    }
+    stage('Validation du déploiement') {
+      when { expression { params.TARGET_ENV != 'none' } }
+      steps {
+        input message: "Promouvoir ${env.RELEASE_TAG} vers ${params.TARGET_ENV} ?", ok: 'Promouvoir'
+      }
+    }
+    stage('Promotion GitOps') {
+      when { expression { params.TARGET_ENV != 'none' } }
+      steps {
+        build job: 'stb-monitoring-cd', wait: true, propagate: true,
+          parameters: [
+            string(name: 'IMAGE_TAG', value: env.RELEASE_TAG),
+            string(name: 'ENVIRONMENT', value: params.TARGET_ENV)
+          ]
+      }
+    }
+    stage('Contrôle post-déploiement') {
+      when {
+        allOf {
+          expression { params.TARGET_ENV != 'none' }
+          expression { params.RUN_OBSERVABILITY }
+        }
+      }
+      steps {
+        build job: 'stb-monitoring-observability', wait: true, propagate: true,
+          parameters: [string(name: 'ENVIRONMENT', value: params.TARGET_ENV)]
+      }
+    }
+  }
+}

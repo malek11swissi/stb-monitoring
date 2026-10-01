@@ -1,2 +1,0 @@
-def componentPipeline = load 'ci/jenkins/aiPipeline.groovy'
-componentPipeline.call()

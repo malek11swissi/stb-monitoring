@@ -17,7 +17,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata: { name: allow-internal-services }
 spec:
-  podSelector: { matchExpressions: [{ key: app, operator: In, values: [stb-ai-service, core-banking-simulator, rne-simulator, sms-simulator, hr-simulator] }] }
+  podSelector: { matchLabels: { app: stb-ai-service } }
   policyTypes: [Ingress]
   ingress:
     - from:
@@ -30,13 +30,3 @@ spec:
   podSelector: { matchLabels: { app: stb-postgres } }
   policyTypes: [Ingress]
   ingress: [{ from: [{ podSelector: { matchLabels: { app: stb-api } } }], ports: [{ port: 5432 }] }]
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata: { name: allow-simulator-databases }
-spec:
-  podSelector: { matchLabels: { stb.io/type: simulator-database } }
-  policyTypes: [Ingress]
-  ingress:
-    - from:
-        - podSelector: { matchLabels: { stb.io/type: simulator } }

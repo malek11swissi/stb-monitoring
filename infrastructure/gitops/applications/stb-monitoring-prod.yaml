@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: stb-monitoring-prod
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/malek11swissi/stb-monitoring.git
+    targetRevision: main
+    path: infrastructure/k8s/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: stb-prod
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,118 @@
+name: stb-sms-ha
+
+x-mysql-common: &mysql-common
+  image: mysql/mysql-server:8.0
+  restart: unless-stopped
+  environment:
+    MYSQL_ROOT_PASSWORD: ${SMS_MYSQL_ROOT_PASSWORD:-SmsRoot_Lab_123!}
+    MYSQL_ROOT_HOST: "%"
+  healthcheck:
+    test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+    interval: 10s
+    timeout: 5s
+    retries: 30
+    start_period: 30s
+
+services:
+  sms-mysql-1:
+    <<: *mysql-common
+    container_name: stb-sms-mysql-1
+    hostname: sms-mysql-1
+    command:
+      - --server-id=1
+      - --gtid-mode=ON
+      - --enforce-gtid-consistency=ON
+      - --log-bin=mysql-bin
+      - --binlog-format=ROW
+      - --log-replica-updates=ON
+      - --transaction-write-set-extraction=XXHASH64
+      - --report-host=sms-mysql-1
+    ports: ["3316:3306"]
+    volumes: ["sms_mysql_1_data:/var/lib/mysql"]
+
+  sms-mysql-2:
+    <<: *mysql-common
+    container_name: stb-sms-mysql-2
+    hostname: sms-mysql-2
+    command:
+      - --server-id=2
+      - --gtid-mode=ON
+      - --enforce-gtid-consistency=ON
+      - --log-bin=mysql-bin
+      - --binlog-format=ROW
+      - --log-replica-updates=ON
+      - --transaction-write-set-extraction=XXHASH64
+      - --report-host=sms-mysql-2
+    ports: ["3317:3306"]
+    volumes: ["sms_mysql_2_data:/var/lib/mysql"]
+
+  sms-mysql-3:
+    <<: *mysql-common
+    container_name: stb-sms-mysql-3
+    hostname: sms-mysql-3
+    command:
+      - --server-id=3
+      - --gtid-mode=ON
+      - --enforce-gtid-consistency=ON
+      - --log-bin=mysql-bin
+      - --binlog-format=ROW
+      - --log-replica-updates=ON
+      - --transaction-write-set-extraction=XXHASH64
+      - --report-host=sms-mysql-3
+    ports: ["3318:3306"]
+    volumes: ["sms_mysql_3_data:/var/lib/mysql"]
+
+  sms-cluster-init:
+    image: mysql/mysql-server:8.0
+    container_name: stb-sms-cluster-init
+    restart: "no"
+    depends_on:
+      sms-mysql-1: { condition: service_healthy }
+      sms-mysql-2: { condition: service_healthy }
+      sms-mysql-3: { condition: service_healthy }
+    environment:
+      MYSQL_ROOT_PASSWORD: ${SMS_MYSQL_ROOT_PASSWORD:-SmsRoot_Lab_123!}
+      SMS_CLUSTER_ADMIN_PASSWORD: ${SMS_CLUSTER_ADMIN_PASSWORD:-SmsCluster_Lab_123!}
+      SMS_DATABASE_PASSWORD: ${SMS_DATABASE_PASSWORD:-SmsApp_Lab_123!}
+    volumes:
+      - ./mysql-ha/init-cluster.js:/scripts/init-cluster.js:ro
+    entrypoint: ["mysqlsh", "--js", "--file=/scripts/init-cluster.js"]
+
+  sms-mysql-router:
+    image: mysql/mysql-router:8.0
+    container_name: stb-sms-mysql-router
+    restart: unless-stopped
+    depends_on:
+      sms-cluster-init: { condition: service_completed_successfully }
+    environment:
+      MYSQL_HOST: sms-mysql-1
+      MYSQL_PORT: 3306
+      MYSQL_USER: cluster_admin
+      MYSQL_PASSWORD: ${SMS_CLUSTER_ADMIN_PASSWORD:-SmsCluster_Lab_123!}
+      MYSQL_INNODB_CLUSTER_MEMBERS: 3
+      MYSQL_CREATE_ROUTER_USER: 1
+    ports:
+      - "6446:6446"
+      - "6447:6447"
+
+  sms-simulator-ha:
+    build: { context: ./SmsSimulator }
+    container_name: stb-sms-simulator-ha
+    restart: unless-stopped
+    depends_on:
+      sms-mysql-router: { condition: service_started }
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__MySql: "Server=sms-mysql-router;Port=6446;Database=sms_simulator;User ID=sms_user;Password=${SMS_DATABASE_PASSWORD:-SmsApp_Lab_123!};Connection Timeout=5;Default Command Timeout=10;Pooling=true"
+      Lab__AdminKey: change-this-lab-key
+      Kestrel__Endpoints__Http__Url: "http://+:8080"
+      Kestrel__Endpoints__Https__Url: "https://+:8443"
+      Kestrel__Endpoints__Https__Certificate__Path: "/https/stb-lab.pfx"
+      Kestrel__Endpoints__Https__Certificate__Password: "ChangeMe_Lab_TLS_123!"
+    volumes: ["./certificates:/https:ro"]
+    ports: ["5303:8080", "7303:8443"]
+
+volumes:
+  sms_mysql_1_data:
+  sms_mysql_2_data:
+  sms_mysql_3_data:

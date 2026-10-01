@@ -1,2 +1,0 @@
-def componentPipeline = load 'ci/jenkins/simulatorPipeline.groovy'
-componentPipeline.call(name: 'sms', project: 'SmsSimulator', image: 'sms-simulator')

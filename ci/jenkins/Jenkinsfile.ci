@@ -1,51 +1,86 @@
-/* Job automatique stb-monitoring-ci : compile, teste, construit et publie les images. */
+/* CI centrale : validation, SonarQube, images Docker et Nexus. */
 pipeline {
   agent any
-  options { timestamps(); disableConcurrentBuilds(); timeout(time: 60, unit: 'MINUTES') }
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+    timeout(time: 60, unit: 'MINUTES')
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+  }
   parameters {
-    booleanParam(name: 'PUBLISH_IMAGES', defaultValue: false, description: 'Publier dans Nexus après sa configuration')
+    string(name: 'RELEASE_TAG', defaultValue: '', description: 'Tag imposé par l’orchestrateur ; vide = génération automatique')
+    booleanParam(name: 'PUBLISH_IMAGES', defaultValue: false, description: 'Publier les images validées dans Nexus')
   }
   environment {
-    COMPOSE_FILE='infrastructure/docker/docker-compose.yml'
-    // Jenkins s'exécute dans un conteneur : cette adresse rejoint le port
-    // 8082 publié par le registre Nexus sur la machine hôte.
-    NEXUS_REGISTRY='host.docker.internal:8082'
-
-    // Base jetable réservée aux tests : la CI ne modifie jamais la base applicative.
-    STB_TEST_POSTGRES='Host=postgres;Port=5432;Database=stb_monitoring_tests;Username=stb_admin;Password=ChangeMe_Postgres_123!'
+    COMPOSE_FILE = 'infrastructure/docker/docker-compose.yml'
+    NEXUS_REGISTRY = 'host.docker.internal:8082'
+    STB_TEST_POSTGRES = 'Host=postgres;Port=5432;Database=stb_monitoring_tests;Username=stb_admin;Password=ChangeMe_Postgres_123!'
   }
   stages {
-    stage('Checkout Git') { steps { checkout scm } }
-    stage('Base de tests') {
+    stage('Checkout') {
       steps {
-        sh 'docker compose -f $COMPOSE_FILE up -d --wait postgres'
+        checkout scm
+        script {
+          env.IMAGE_TAG = params.RELEASE_TAG?.trim() ? params.RELEASE_TAG.trim() : "${env.BUILD_NUMBER}-${env.GIT_COMMIT.take(8)}"
+          currentBuild.displayName = "#${env.BUILD_NUMBER} ${env.IMAGE_TAG}"
+        }
+        echo "Images de la livraison : ${env.IMAGE_TAG}"
       }
     }
-    stage('Restauration et validation') {
+    stage('Préparation') {
       parallel {
-        stage('Backend et simulateurs .NET') {
-          steps { sh 'dotnet restore StbMonitoring.sln && dotnet test StbMonitoring.sln -c Release --no-restore --collect:"XPlat Code Coverage"' }
+        stage('.NET et base de tests') {
+          steps {
+            sh '''docker compose -f "$COMPOSE_FILE" up -d --wait postgres
+dotnet restore StbMonitoring.sln
+dotnet tool update --global dotnet-sonarscanner || dotnet tool install --global dotnet-sonarscanner'''
+          }
         }
-        stage('Frontend Angular') {
-          steps { dir('platform/frontend') { sh 'npm ci && npm run build' } }
+        stage('Angular') {
+          steps { dir('platform/frontend') { sh 'npm ci' } }
         }
-        stage('Service IA Python') {
+        stage('Python') {
           steps {
             dir('ai-service') {
               sh '''python3 -m venv .venv-ci
-.venv-ci/bin/python -m pip install -r requirements.txt
-.venv-ci/bin/python -m pytest -q'''
+.venv-ci/bin/python -m pip install -r requirements.txt'''
             }
           }
         }
       }
     }
-    stage('Construction des images') {
+    stage('Build, tests et analyse') {
+      parallel {
+        stage('.NET + SonarQube') {
+          steps {
+            withSonarQubeEnv('stb-sonarqube') {
+              withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+                sh '''export PATH="$PATH:$HOME/.dotnet/tools"
+dotnet sonarscanner begin /k:"STB-Monitoring" /d:sonar.token="$SONAR_TOKEN" /d:sonar.cs.opencover.reportsPaths="**/TestResults/coverage.opencover.xml"
+dotnet build StbMonitoring.sln -c Release --no-restore
+dotnet test StbMonitoring.sln -c Release --no-build --no-restore --logger "trx" /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:CoverletOutput=./TestResults/coverage.opencover.xml
+dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"'''
+              }
+            }
+          }
+        }
+        stage('Angular') {
+          steps { dir('platform/frontend') { sh 'npm run build' } }
+        }
+        stage('Python') {
+          steps { dir('ai-service') { sh '.venv-ci/bin/python -m pytest -q' } }
+        }
+      }
+    }
+    stage('Quality Gate') {
       steps {
-        script { env.IMAGE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT.take(8)}" }
-        // Construction séquentielle pour ne pas saturer la connexion avec
-        // plusieurs téléchargements NuGet et PyPI simultanés.
-        sh 'IMAGE_TAG=$IMAGE_TAG docker compose --parallel 1 -f $COMPOSE_FILE --profile simulators build api frontend ai-service core-banking-simulator rne-simulator sms-simulator hr-simulator'
+        timeout(time: 10, unit: 'MINUTES') { waitForQualityGate abortPipeline: true }
+      }
+    }
+    stage('Images Docker') {
+      steps {
+        sh '''IMAGE_TAG="$IMAGE_TAG" docker compose --parallel 1 -f "$COMPOSE_FILE" build api frontend ai-service
+printf '%s' "$IMAGE_TAG" > image-tag.txt'''
       }
     }
     stage('Publication Nexus') {
@@ -53,11 +88,18 @@ pipeline {
       steps {
         withCredentials([usernamePassword(credentialsId: 'nexus-credentials', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASSWORD')]) {
           sh '''echo "$NEXUS_PASSWORD" | docker login "$NEXUS_REGISTRY" -u "$NEXUS_USER" --password-stdin
-IMAGE_TAG=$IMAGE_TAG NEXUS_REGISTRY=$NEXUS_REGISTRY docker compose -f $COMPOSE_FILE --profile simulators push api frontend ai-service core-banking-simulator rne-simulator sms-simulator hr-simulator
+IMAGE_TAG="$IMAGE_TAG" NEXUS_REGISTRY="$NEXUS_REGISTRY" docker compose -f "$COMPOSE_FILE" push api frontend ai-service
 docker logout "$NEXUS_REGISTRY"'''
         }
       }
     }
   }
-  post { always { archiveArtifacts allowEmptyArchive: true, artifacts: '**/TestResults/**,ai-service/models/evaluation.json' } }
+  post {
+    always {
+      archiveArtifacts allowEmptyArchive: true, artifacts: '**/*.trx,**/TestResults/**,ai-service/models/evaluation.json,image-tag.txt'
+    }
+    cleanup {
+      sh 'docker compose -f "$COMPOSE_FILE" stop postgres || true'
+    }
+  }
 }
