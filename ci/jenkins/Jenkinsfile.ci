@@ -13,8 +13,12 @@ pipeline {
   }
   environment {
     COMPOSE_FILE = 'infrastructure/docker/docker-compose.yml'
+    CI_COMPOSE_FILE = 'ci/jenkins/docker-compose.ci.yml'
     NEXUS_REGISTRY = 'host.docker.internal:8082'
-    STB_TEST_POSTGRES = 'Host=postgres;Port=5432;Database=stb_monitoring_tests;Username=stb_admin;Password=ChangeMe_Postgres_123!'
+    STB_TEST_POSTGRES = 'Host=postgres-test;Port=5432;Database=stb_monitoring_tests;Username=stb_admin;Password=ChangeMe_Postgres_123!'
+    API_PROJECT = 'platform/backend/StbMonitoring.Api/StbMonitoring.Api.csproj'
+    UNIT_TEST_PROJECT = 'tests/unit/StbMonitoring.UnitTests/StbMonitoring.UnitTests.csproj'
+    INTEGRATION_TEST_PROJECT = 'tests/integration/StbMonitoring.IntegrationTests/StbMonitoring.IntegrationTests.csproj'
   }
   stages {
     stage('Checkout') {
@@ -31,8 +35,10 @@ pipeline {
       parallel {
         stage('.NET et base de tests') {
           steps {
-            sh '''docker compose -f "$COMPOSE_FILE" up -d --wait postgres
-dotnet restore StbMonitoring.sln
+            sh '''docker compose -p docker -f "$CI_COMPOSE_FILE" up -d --wait postgres-test
+dotnet restore "$API_PROJECT" --disable-parallel
+dotnet restore "$UNIT_TEST_PROJECT" --disable-parallel
+dotnet restore "$INTEGRATION_TEST_PROJECT" --disable-parallel
 dotnet tool update --global dotnet-sonarscanner || dotnet tool install --global dotnet-sonarscanner'''
           }
         }
@@ -57,8 +63,9 @@ dotnet tool update --global dotnet-sonarscanner || dotnet tool install --global 
               withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
                 sh '''export PATH="$PATH:$HOME/.dotnet/tools"
 dotnet sonarscanner begin /k:"STB-Monitoring" /d:sonar.token="$SONAR_TOKEN" /d:sonar.cs.opencover.reportsPaths="**/TestResults/coverage.opencover.xml"
-dotnet build StbMonitoring.sln -c Release --no-restore
-dotnet test StbMonitoring.sln -c Release --no-build --no-restore --logger "trx" /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:CoverletOutput=./TestResults/coverage.opencover.xml
+dotnet build "$API_PROJECT" -c Release --no-restore -m:1
+dotnet test "$UNIT_TEST_PROJECT" -c Release --no-restore -m:1 --logger "trx" /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:CoverletOutput=./TestResults/coverage.opencover.xml
+dotnet test "$INTEGRATION_TEST_PROJECT" -c Release --no-restore -m:1 --logger "trx" /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:CoverletOutput=./TestResults/coverage.opencover.xml
 dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"'''
               }
             }
@@ -99,7 +106,7 @@ docker logout "$NEXUS_REGISTRY"'''
       archiveArtifacts allowEmptyArchive: true, artifacts: '**/*.trx,**/TestResults/**,ai-service/models/evaluation.json,image-tag.txt'
     }
     cleanup {
-      sh 'docker compose -f "$COMPOSE_FILE" stop postgres || true'
+      sh 'docker compose -p docker -f "$CI_COMPOSE_FILE" rm -sf postgres-test || true'
     }
   }
 }

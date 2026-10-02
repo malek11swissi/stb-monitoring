@@ -1,0 +1,14 @@
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: stb_monitoring_tests
+      POSTGRES_USER: stb_admin
+      POSTGRES_PASSWORD: ChangeMe_Postgres_123!
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stb_admin -d stb_monitoring_tests"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    tmpfs:
+      - /var/lib/postgresql/data
